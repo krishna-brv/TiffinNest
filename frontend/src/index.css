@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply min-h-screen text-gray-900 font-sans antialiased bg-fixed;
+    background:
+      radial-gradient(circle at 8% 12%, rgba(244, 114, 82, 0.18), transparent 24rem),
+      radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.18), transparent 22rem),
+      linear-gradient(135deg, #fffaf2 0%, #f1fbf7 44%, #fff7ed 100%);
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/90 backdrop-blur-md border border-white/70 shadow-xl;
+  }
+  
+  .glass-input {
+    @apply bg-white/80 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:border-transparent transition-all;
+  }
+
+  .app-shell {
+    @apply min-h-screen bg-transparent p-4 sm:p-8 font-sans;
+  }
+
+  .page-panel {
+    @apply max-w-7xl mx-auto bg-white/90 backdrop-blur-md border border-white/70 shadow-xl p-6 sm:p-8 rounded-2xl;
+  }
+
+  .action-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-bold shadow-md transition-all hover:-translate-y-0.5;
+  }
+
+  .food-card {
+    @apply rounded-2xl border border-white/80 bg-white/85 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl;
+  }
+}

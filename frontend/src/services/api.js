@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api',
+  baseURL: 'https://tiffinnest.onrender.com/api',
 });
 
 // Add a request interceptor to add token to headers

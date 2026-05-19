@@ -19,7 +19,13 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'https://tiffin-nest.vercel.app',
+  credentials: true,
+}));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -34,7 +40,7 @@ app.use('/api/reviews', reviewRoutes);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // We'll restrict this to the frontend URL later if needed
+    origin: 'https://tiffin-nest.vercel.app', // We'll restrict this to the frontend URL later if needed
     methods: ['GET', 'POST']
   }
 });

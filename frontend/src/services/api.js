@@ -1,13 +1,14 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api',
+  baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true,
 });
 
-// Add a request interceptor to add token to headers
 api.interceptors.request.use(
   (config) => {
     const userInfo = localStorage.getItem('userInfo');
+
     if (userInfo) {
       try {
         const parsedUserInfo = JSON.parse(userInfo);
@@ -18,11 +19,10 @@ api.interceptors.request.use(
         localStorage.removeItem('userInfo');
       }
     }
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 export default api;

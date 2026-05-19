@@ -9,8 +9,14 @@ api.interceptors.request.use(
   (config) => {
     const userInfo = localStorage.getItem('userInfo');
     if (userInfo) {
-      const parsedUserInfo = JSON.parse(userInfo);
-      config.headers.Authorization = `Bearer ${parsedUserInfo.token}`;
+      try {
+        const parsedUserInfo = JSON.parse(userInfo);
+        if (parsedUserInfo?.token) {
+          config.headers.Authorization = `Bearer ${parsedUserInfo.token}`;
+        }
+      } catch {
+        localStorage.removeItem('userInfo');
+      }
     }
     return config;
   },

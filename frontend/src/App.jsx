@@ -1,6 +1,8 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import useAuthStore from './store/authStore';
+import useUIStore from './store/uiStore';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -12,6 +14,9 @@ import ProviderPlans from './pages/ProviderPlans';
 import ProviderOrders from './pages/ProviderOrders';
 import ProviderMenu from './pages/ProviderMenu';
 import UserDashboard from './pages/UserDashboard';
+import Terms from './pages/Terms';
+import Contact from './pages/Contact';
+import Toast from './components/Toast';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, role }) => {
@@ -31,12 +36,46 @@ const ProtectedRoute = ({ children, role }) => {
 };
 
 function App() {
+  const { user } = useAuthStore();
+  const { theme, addToast } = useUIStore();
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    if (!user?._id) return undefined;
+
+    const socket = io('http://localhost:5001');
+    const orderEvent = user.role === 'provider' ? `new-order-${user._id}` : `order-status-${user._id}`;
+    const providerEvent = user.role === 'provider' ? `order-status-${user._id}` : null;
+
+    socket.on(orderEvent, () => {
+      addToast(user.role === 'provider' ? 'New order received.' : 'Your order status was updated.', 'info');
+    });
+
+    if (providerEvent) {
+      socket.on(providerEvent, () => addToast('An order was updated.', 'info'));
+    }
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [addToast, user]);
+
   return (
     <Router>
-      <div className="min-h-screen bg-transparent text-gray-900 font-sans">
+      <div className={`min-h-screen font-sans ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-transparent text-gray-900'}`}>
+        <Toast />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/contact" element={<Contact />} />
           
           {/* Customer Routes */}
           <Route path="/customer/dashboard" element={<ProtectedRoute role="customer"><CustomerDashboard /></ProtectedRoute>} />

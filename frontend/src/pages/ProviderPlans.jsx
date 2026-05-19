@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../services/api';
-import { ChefHat, MapPin, IndianRupee, PlusCircle, Trash2 } from 'lucide-react';
+import { ChefHat, IndianRupee, PlusCircle, Trash2 } from 'lucide-react';
 
 const ProviderPlans = () => {
   const navigate = useNavigate();
@@ -15,6 +15,10 @@ const ProviderPlans = () => {
     city: '',
     zipCode: '',
     deliveryFee: 0,
+    imageUrl: '',
+    availability: true,
+    closedDates: '',
+    deliverySlots: '12:00 PM - 2:00 PM',
   });
   const [profileMessage, setProfileMessage] = useState('');
 
@@ -47,6 +51,10 @@ const ProviderPlans = () => {
             city: myProfile.location?.city || '',
             zipCode: myProfile.location?.zipCode || '',
             deliveryFee: myProfile.pricing?.deliveryFee || 0,
+            imageUrl: myProfile.imageUrl || '',
+            availability: myProfile.availability !== false,
+            closedDates: myProfile.closedDates?.map((date) => new Date(date).toISOString().slice(0, 10)).join(', ') || '',
+            deliverySlots: myProfile.deliverySlots?.join(', ') || myProfile.deliveryTimings || '12:00 PM - 2:00 PM',
           });
         }
 
@@ -70,7 +78,12 @@ const ProviderPlans = () => {
           city: profile.city,
           zipCode: profile.zipCode
         },
-        pricing: { deliveryFee: Number(profile.deliveryFee) }
+        pricing: { deliveryFee: Number(profile.deliveryFee) },
+        imageUrl: profile.imageUrl,
+        availability: profile.availability,
+        closedDates: profile.closedDates.split(',').map(item => item.trim()).filter(Boolean),
+        deliverySlots: profile.deliverySlots.split(',').map(item => item.trim()).filter(Boolean),
+        deliveryTimings: profile.deliverySlots,
       });
       setProfileMessage('Profile updated successfully!');
       setTimeout(() => setProfileMessage(''), 3000);
@@ -149,6 +162,22 @@ const ProviderPlans = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-800">Delivery Fee (₹)</label>
                 <input type="number" required min="0" className="mt-1 block w-full px-4 py-2 glass-input rounded-xl" value={profile.deliveryFee} onChange={e => setProfile({ ...profile, deliveryFee: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-800">Kitchen / Meal Image URL</label>
+                <input type="url" className="mt-1 block w-full px-4 py-2 glass-input rounded-xl" placeholder="https://..." value={profile.imageUrl} onChange={e => setProfile({ ...profile, imageUrl: e.target.value })} />
+              </div>
+              <label className="flex items-center gap-2 rounded-xl bg-white/60 px-4 py-3 text-sm font-bold text-gray-800">
+                <input type="checkbox" checked={profile.availability} onChange={e => setProfile({ ...profile, availability: e.target.checked })} />
+                Accepting new orders
+              </label>
+              <div>
+                <label className="block text-sm font-medium text-gray-800">Closed Dates</label>
+                <input type="text" className="mt-1 block w-full px-4 py-2 glass-input rounded-xl" placeholder="2026-05-20, 2026-05-25" value={profile.closedDates} onChange={e => setProfile({ ...profile, closedDates: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-800">Delivery Time Slots</label>
+                <input type="text" className="mt-1 block w-full px-4 py-2 glass-input rounded-xl" placeholder="12:00 PM - 2:00 PM, 7:00 PM - 9:00 PM" value={profile.deliverySlots} onChange={e => setProfile({ ...profile, deliverySlots: e.target.value })} />
               </div>
               <button type="submit" className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-md transition-transform hover:-translate-y-0.5">Save Profile</button>
             </form>

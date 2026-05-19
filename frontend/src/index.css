@@ -34,4 +34,68 @@
   .food-card {
     @apply rounded-2xl border border-white/80 bg-white/85 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl;
   }
+
+  .slide-color-card {
+    @apply relative overflow-hidden;
+  }
+
+  .slide-color-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 0%, rgba(13, 148, 136, 0.22) 30%, rgba(245, 158, 11, 0.26) 50%, rgba(79, 70, 229, 0.2) 72%, transparent 100%);
+    transform: translateX(-105%);
+    transition: transform 650ms ease;
+    pointer-events: none;
+  }
+
+  .slide-color-card:hover::before {
+    transform: translateX(105%);
+  }
+
+  .slide-color-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .account-panel {
+    background: linear-gradient(135deg, #ffffff 0%, #ecfeff 42%, #fff7ed 100%);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  .account-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #164e63 50%, #0f766e 100%);
+    color: #ffffff;
+  }
+
+  .account-action-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+  }
+
+  .account-action-card:hover {
+    border-color: rgba(13, 148, 136, 0.38);
+  }
+
+  .dashboard-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #164e63 45%, #0f766e 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .dashboard-panel {
+    background: linear-gradient(135deg, #ffffff 0%, #ecfeff 46%, #fff7ed 100%);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+  }
+
+  .dashboard-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  }
+
+  .dashboard-card:hover {
+    border-color: rgba(13, 148, 136, 0.32);
+  }
 }

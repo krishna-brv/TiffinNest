@@ -19,9 +19,21 @@ const providerProfileSchema = mongoose.Schema(
     pricing: {
       deliveryFee: { type: Number, default: 0 },
     },
+    imageUrl: {
+      type: String,
+      default: '',
+    },
     availability: {
       type: Boolean,
       default: true,
+    },
+    closedDates: {
+      type: [Date],
+      default: [],
+    },
+    deliverySlots: {
+      type: [String],
+      default: ['12:00 PM - 2:00 PM'],
     },
     deliveryTimings: {
       type: String,

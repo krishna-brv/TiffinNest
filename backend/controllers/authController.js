@@ -1,6 +1,11 @@
 import User from '../models/User.js';
+import Order from '../models/Order.js';
+import MealPlan from '../models/MealPlan.js';
+import ProviderProfile from '../models/ProviderProfile.js';
+import Review from '../models/Review.js';
 import generateToken from '../utils/generateToken.js';
 import { validationResult } from 'express-validator';
+import crypto from 'crypto';
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -33,6 +38,8 @@ export const registerUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        favoriteProviders: user.favoriteProviders || [],
+        addressBook: user.addressBook || [],
         token: generateToken(user._id),
       });
     } else {
@@ -63,11 +70,92 @@ export const authUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        favoriteProviders: user.favoriteProviders || [],
+        addressBook: user.addressBook || [],
         token: generateToken(user._id),
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Request a password reset token
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required' });
+  }
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.json({
+        message: 'If an account exists for this email, a password reset token has been created.',
+      });
+    }
+
+    const resetToken = user.createPasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+
+    res.json({
+      message: 'Password reset token created. Use it within 15 minutes.',
+      resetToken,
+      resetUrl: `/login?resetToken=${resetToken}`,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Reset password with token
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ message: 'Reset token and new password are required' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ message: 'New password must be at least 6 characters' });
+  }
+
+  try {
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Reset token is invalid or expired' });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      favoriteProviders: user.favoriteProviders || [],
+      token: generateToken(user._id),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -86,10 +174,51 @@ export const getUserProfile = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        favoriteProviders: user.favoriteProviders || [],
+        addressBook: user.addressBook || [],
       });
     } else {
       res.status(404).json({ message: 'User not found' });
     }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Toggle a provider in customer favorites
+// @route   PUT /api/auth/favorites/:providerId
+// @access  Private
+export const toggleFavoriteProvider = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const provider = await User.findById(req.params.providerId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!provider || provider.role !== 'provider') {
+      return res.status(404).json({ message: 'Provider not found' });
+    }
+
+    const alreadyFavorite = user.favoriteProviders.some((id) => (
+      id.toString() === req.params.providerId
+    ));
+
+    if (alreadyFavorite) {
+      user.favoriteProviders = user.favoriteProviders.filter((id) => (
+        id.toString() !== req.params.providerId
+      ));
+    } else {
+      user.favoriteProviders.push(provider._id);
+    }
+
+    await user.save();
+
+    res.json({
+      favoriteProviders: user.favoriteProviders,
+      isFavorite: !alreadyFavorite,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -120,6 +249,50 @@ export const updateUserProfile = async (req, res) => {
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role,
+      favoriteProviders: updatedUser.favoriteProviders || [],
+      addressBook: updatedUser.addressBook || [],
+      token: generateToken(updatedUser._id),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Save logged in user's address book
+// @route   PUT /api/auth/address-book
+// @access  Private
+export const updateAddressBook = async (req, res) => {
+  const { addressBook } = req.body;
+
+  if (!Array.isArray(addressBook)) {
+    return res.status(400).json({ message: 'Address book must be a list' });
+  }
+
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.addressBook = addressBook
+      .map((item) => ({
+        label: item.label?.trim(),
+        address: item.address?.trim(),
+        city: item.city?.trim(),
+        zipCode: item.zipCode?.trim(),
+      }))
+      .filter((item) => item.label && item.address && item.city && item.zipCode);
+
+    const updatedUser = await user.save();
+
+    res.json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      favoriteProviders: updatedUser.favoriteProviders || [],
+      addressBook: updatedUser.addressBook || [],
       token: generateToken(updatedUser._id),
     });
   } catch (error) {
@@ -158,6 +331,56 @@ export const changePassword = async (req, res) => {
     await user.save();
 
     res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Delete logged in user's account
+// @route   DELETE /api/auth/profile
+// @access  Private
+export const deleteUserAccount = async (req, res) => {
+  const { currentPassword } = req.body;
+
+  if (!currentPassword) {
+    return res.status(400).json({ message: 'Current password is required to delete your account' });
+  }
+
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const passwordMatches = await user.matchPassword(currentPassword);
+
+    if (!passwordMatches) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    await User.updateMany(
+      { favoriteProviders: user._id },
+      { $pull: { favoriteProviders: user._id } }
+    );
+
+    await MealPlan.updateMany(
+      { 'reviews.user': user._id },
+      { $pull: { reviews: { user: user._id } } }
+    );
+
+    if (user.role === 'provider') {
+      await ProviderProfile.deleteOne({ user: user._id });
+      await MealPlan.deleteMany({ provider: user._id });
+      await Order.deleteMany({ provider: user._id });
+      await Review.deleteMany({ provider: user._id });
+    }
+
+    await Order.deleteMany({ customer: user._id });
+    await Review.deleteMany({ customer: user._id });
+    await user.deleteOne();
+
+    res.json({ message: 'Account deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -1,5 +1,6 @@
 import Order from '../models/Order.js';
 import MealPlan from '../models/MealPlan.js';
+import ProviderProfile from '../models/ProviderProfile.js';
 import { io } from '../server.js';
 
 const startOfDay = (date) => {
@@ -10,13 +11,18 @@ const startOfDay = (date) => {
 
 const endOfCurrentMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-const buildOrderSchedule = (subscriptionType, startDate) => {
+const getDateKey = (date) => startOfDay(date).toISOString().slice(0, 10);
+
+const buildOrderSchedule = (subscriptionType, startDate, closedDates = []) => {
   const schedule = [];
   const current = startOfDay(startDate);
   const endDate = subscriptionType === 'one-time' ? startOfDay(startDate) : endOfCurrentMonth(current);
+  const closedDateKeys = new Set(closedDates.map((date) => getDateKey(date)));
 
   while (current <= endDate) {
-    schedule.push({ date: new Date(current), status: 'scheduled' });
+    if (!closedDateKeys.has(getDateKey(current))) {
+      schedule.push({ date: new Date(current), status: 'scheduled' });
+    }
 
     if (subscriptionType === 'weekly') {
       current.setDate(current.getDate() + 7);
@@ -80,13 +86,22 @@ const rebuildRoutineSchedule = (order, subscriptionType, startDate) => {
 // @route   POST /api/orders
 // @access  Private/Customer
 export const createOrder = async (req, res) => {
-  const { provider, mealPlan, deliveryAddress, subscriptionType = 'one-time' } = req.body;
+  const { provider, mealPlan, deliveryAddress, deliverySlot, subscriptionType = 'one-time' } = req.body;
 
   try {
     const selectedMealPlan = await MealPlan.findById(mealPlan);
 
     if (!selectedMealPlan) {
       return res.status(404).json({ message: 'Meal plan not found' });
+    }
+
+    const providerProfile = await ProviderProfile.findOne({ user: provider });
+    if (providerProfile && !providerProfile.availability) {
+      return res.status(400).json({ message: 'This provider is currently unavailable' });
+    }
+
+    if (providerProfile?.deliverySlots?.length && deliverySlot && !providerProfile.deliverySlots.includes(deliverySlot)) {
+      return res.status(400).json({ message: 'Selected delivery slot is not available' });
     }
 
     const existingRoutine = await findScheduledRoutine({
@@ -103,7 +118,12 @@ export const createOrder = async (req, res) => {
     }
 
     const startDate = startOfDay(new Date());
-    const { schedule, endDate } = buildOrderSchedule(subscriptionType, startDate);
+    const { schedule, endDate } = buildOrderSchedule(subscriptionType, startDate, providerProfile?.closedDates || []);
+
+    if (schedule.length === 0) {
+      return res.status(400).json({ message: 'No delivery dates are available for this routine right now' });
+    }
+
     const monthlyBill = selectedMealPlan.price * schedule.length;
 
     const order = await Order.create({
@@ -111,6 +131,7 @@ export const createOrder = async (req, res) => {
       provider,
       mealPlan,
       deliveryAddress,
+      deliverySlot: deliverySlot || providerProfile?.deliverySlots?.[0] || '12:00 PM - 2:00 PM',
       totalPrice: selectedMealPlan.price,
       monthlyBill,
       subscriptionType,
@@ -132,7 +153,7 @@ export const createOrder = async (req, res) => {
 // @route   PUT /api/orders/:id/routine
 // @access  Private/Customer
 export const updateRoutineOrder = async (req, res) => {
-  const { deliveryAddress, subscriptionType } = req.body;
+  const { deliveryAddress, deliverySlot, subscriptionType } = req.body;
 
   try {
     const order = await Order.findById(req.params.id);
@@ -153,6 +174,14 @@ export const updateRoutineOrder = async (req, res) => {
       order.deliveryAddress = deliveryAddress;
     }
 
+    if (deliverySlot) {
+      const providerProfile = await ProviderProfile.findOne({ user: order.provider });
+      if (providerProfile?.deliverySlots?.length && !providerProfile.deliverySlots.includes(deliverySlot)) {
+        return res.status(400).json({ message: 'Selected delivery slot is not available' });
+      }
+      order.deliverySlot = deliverySlot;
+    }
+
     if (subscriptionType && subscriptionType !== order.subscriptionType) {
       if (subscriptionType === 'one-time') {
         return res.status(400).json({ message: 'Use routine types only when editing an existing routine' });
@@ -161,6 +190,204 @@ export const updateRoutineOrder = async (req, res) => {
       order.subscriptionType = subscriptionType;
       rebuildRoutineSchedule(order, subscriptionType, new Date());
     }
+
+    const updatedOrder = await order.save();
+
+    io.emit(`order-status-${order.provider}`, updatedOrder);
+
+    res.json({
+      ...updatedOrder.toObject(),
+      nextOrderDate: getNextOrderDate(updatedOrder),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Pause a routine order for a date range
+// @route   PUT /api/orders/:id/pause
+// @access  Private/Customer
+export const pauseRoutineOrder = async (req, res) => {
+  const { startDate, endDate } = req.body;
+
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.customer.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    if (order.subscriptionType === 'one-time') {
+      return res.status(400).json({ message: 'Only routine orders can be paused' });
+    }
+
+    const pauseStart = startOfDay(startDate || new Date());
+    const pauseEnd = startOfDay(endDate || startDate || new Date());
+
+    if (pauseEnd < pauseStart) {
+      return res.status(400).json({ message: 'Pause end date cannot be before start date' });
+    }
+
+    let pausedCount = 0;
+    order.orderSchedule.forEach((item) => {
+      const date = startOfDay(item.date);
+      if (item.status === 'scheduled' && date >= pauseStart && date <= pauseEnd) {
+        item.status = 'paused';
+        pausedCount += 1;
+      }
+    });
+
+    if (!pausedCount) {
+      return res.status(400).json({ message: 'No scheduled deliveries found in this date range' });
+    }
+
+    order.monthlyBill = order.totalPrice * order.orderSchedule.filter((item) => (
+      item.status === 'scheduled' || item.status === 'delivered'
+    )).length;
+
+    const updatedOrder = await order.save();
+    io.emit(`order-status-${order.provider}`, updatedOrder);
+
+    res.json({
+      ...updatedOrder.toObject(),
+      nextOrderDate: getNextOrderDate(updatedOrder),
+      pausedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Resume paused deliveries on a routine order
+// @route   PUT /api/orders/:id/resume
+// @access  Private/Customer
+export const resumeRoutineOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.customer.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    if (order.subscriptionType === 'one-time') {
+      return res.status(400).json({ message: 'Only routine orders can be resumed' });
+    }
+
+    const today = startOfDay(new Date());
+    let resumedCount = 0;
+
+    order.orderSchedule.forEach((item) => {
+      if (item.status === 'paused' && startOfDay(item.date) >= today) {
+        item.status = 'scheduled';
+        resumedCount += 1;
+      }
+    });
+
+    if (!resumedCount) {
+      return res.status(400).json({ message: 'No upcoming paused deliveries found' });
+    }
+
+    order.status = ['cancelled', 'delivered'].includes(order.status) ? 'accepted' : order.status;
+    order.monthlyBill = order.totalPrice * order.orderSchedule.filter((item) => (
+      item.status === 'scheduled' || item.status === 'delivered'
+    )).length;
+
+    const updatedOrder = await order.save();
+    io.emit(`order-status-${order.provider}`, updatedOrder);
+
+    res.json({
+      ...updatedOrder.toObject(),
+      nextOrderDate: getNextOrderDate(updatedOrder),
+      resumedCount,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Skip the next scheduled routine delivery
+// @route   PUT /api/orders/:id/skip-next
+// @access  Private/Customer
+export const skipNextRoutineOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.customer.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    if (order.subscriptionType === 'one-time') {
+      return res.status(400).json({ message: 'Only routine orders can skip scheduled deliveries' });
+    }
+
+    const today = startOfDay(new Date());
+    const nextSchedule = order.orderSchedule
+      .filter((item) => item.status === 'scheduled' && startOfDay(item.date) >= today)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+
+    if (!nextSchedule) {
+      return res.status(400).json({ message: 'No upcoming scheduled delivery to skip' });
+    }
+
+    nextSchedule.status = 'skipped';
+    order.monthlyBill = order.totalPrice * order.orderSchedule.filter((item) => (
+      item.status === 'scheduled' || item.status === 'delivered'
+    )).length;
+    order.status = hasFutureScheduledOrder(order) ? order.status : 'cancelled';
+
+    const updatedOrder = await order.save();
+
+    io.emit(`order-status-${order.provider}`, updatedOrder);
+
+    res.json({
+      ...updatedOrder.toObject(),
+      nextOrderDate: getNextOrderDate(updatedOrder),
+      skippedDate: nextSchedule.date,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Cancel a customer order or routine
+// @route   PUT /api/orders/:id/cancel
+// @access  Private/Customer
+export const cancelOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.customer.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    if (['delivered', 'cancelled', 'rejected'].includes(order.status)) {
+      return res.status(400).json({ message: 'This order cannot be cancelled now' });
+    }
+
+    const today = startOfDay(new Date());
+    order.status = 'cancelled';
+    order.orderSchedule.forEach((item) => {
+      if (item.status === 'scheduled' && startOfDay(item.date) >= today) {
+        item.status = 'skipped';
+      }
+    });
+    order.monthlyBill = order.totalPrice * order.orderSchedule.filter((item) => item.status === 'delivered').length;
 
     const updatedOrder = await order.save();
 

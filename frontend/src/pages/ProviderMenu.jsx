@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { IndianRupee, MapPin, CheckCircle, Package, Clock, Calculator } from 'lucide-react';
+import { IndianRupee, MapPin, CheckCircle, Package, Clock, Calculator, ChefHat } from 'lucide-react';
+import useAuthStore from '../store/authStore';
 
 const ProviderMenu = () => {
   const { id } = useParams(); // Provider User ID
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   
   const [mealPlans, setMealPlans] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
+  const [providerProfile, setProviderProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
   // Ordering State
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [deliveryAddress, setDeliveryAddress] = useState({ address: '', city: '', zipCode: '' });
+  const [deliverySlot, setDeliverySlot] = useState('12:00 PM - 2:00 PM');
   const [subscriptionType, setSubscriptionType] = useState('daily');
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState('');
@@ -29,12 +33,15 @@ const ProviderMenu = () => {
   useEffect(() => {
     const fetchMenu = async () => {
       try {
-        const [{ data: plans }, { data: orders }] = await Promise.all([
+        const [{ data: plans }, { data: orders }, { data: profile }] = await Promise.all([
           api.get(`/meals/provider/${id}`),
           api.get('/orders/myorders'),
+          api.get(`/providers/${id}`),
         ]);
         setMealPlans(plans);
         setMyOrders(orders);
+        setProviderProfile(profile);
+        setDeliverySlot(profile.deliverySlots?.[0] || profile.deliveryTimings || '12:00 PM - 2:00 PM');
         setLoading(false);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
@@ -67,12 +74,24 @@ const ProviderMenu = () => {
 
     if (existingRoutine) {
       setDeliveryAddress(existingRoutine.deliveryAddress || { address: '', city: '', zipCode: '' });
+      setDeliverySlot(existingRoutine.deliverySlot || providerProfile?.deliverySlots?.[0] || '12:00 PM - 2:00 PM');
       setSubscriptionType(existingRoutine.subscriptionType);
       return;
     }
 
     setDeliveryAddress({ address: '', city: '', zipCode: '' });
+    setDeliverySlot(providerProfile?.deliverySlots?.[0] || providerProfile?.deliveryTimings || '12:00 PM - 2:00 PM');
     setSubscriptionType(plan.frequency);
+  };
+
+  const applySavedAddress = (addressId) => {
+    const savedAddress = user?.addressBook?.find((item) => item._id === addressId);
+    if (!savedAddress) return;
+    setDeliveryAddress({
+      address: savedAddress.address,
+      city: savedAddress.city,
+      zipCode: savedAddress.zipCode,
+    });
   };
 
   const handleOrder = async (e) => {
@@ -84,6 +103,7 @@ const ProviderMenu = () => {
       if (existingRoutine) {
         await api.put(`/orders/${existingRoutine._id}/routine`, {
           deliveryAddress,
+          deliverySlot,
           subscriptionType,
         });
         setOrderSuccess('Routine updated successfully! Redirecting to My Orders...');
@@ -92,6 +112,7 @@ const ProviderMenu = () => {
           provider: id,
           mealPlan: selectedPlan._id,
           deliveryAddress,
+          deliverySlot,
           subscriptionType: subscriptionType
         });
         setOrderSuccess('Order placed successfully! Redirecting to My Orders...');
@@ -110,15 +131,37 @@ const ProviderMenu = () => {
   return (
     <div className="app-shell">
       <div className="page-panel">
-        <div className="flex justify-between items-center mb-8 border-b border-slate-200 pb-4">
-          <h1 className="text-3xl font-extrabold text-slate-950 flex items-center">
-            <Package className="w-8 h-8 mr-3 text-teal-600" />
-            Provider Menu
-          </h1>
+        <div className="flex flex-col lg:flex-row justify-between gap-4 mb-8 border-b border-slate-200 pb-4">
+          <div className="flex gap-4">
+            <div className="h-20 w-20 overflow-hidden rounded-2xl bg-teal-50 shrink-0">
+              {providerProfile?.imageUrl ? (
+                <img src={providerProfile.imageUrl} alt={providerProfile.user?.name || 'Kitchen'} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <ChefHat className="w-8 h-8 text-teal-700" />
+                </div>
+              )}
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold text-slate-950 flex items-center">
+                <Package className="w-8 h-8 mr-3 text-teal-600" />
+                {providerProfile?.user?.name || 'Provider'} Menu
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">
+                {(providerProfile?.deliverySlots || []).join(', ') || providerProfile?.deliveryTimings || 'Delivery slots available'}
+              </p>
+            </div>
+          </div>
           <button onClick={() => navigate(-1)} className="action-button bg-white hover:bg-slate-50 text-gray-800">
             Back
           </button>
         </div>
+
+        {providerProfile?.availability === false && (
+          <div className="mb-8 rounded-xl border border-rose-100 bg-rose-50 p-4 text-sm font-bold text-rose-700">
+            This kitchen is currently not accepting new orders.
+          </div>
+        )}
 
         {orderSuccess && (
           <div className="mb-8 p-4 bg-green-100 text-green-800 rounded-xl flex items-center border border-green-200 shadow-sm animate-pulse">
@@ -169,12 +212,38 @@ const ProviderMenu = () => {
                   </div>
                 </div>
 
+                <div className="mb-4 rounded-xl bg-white/50 border border-slate-100 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-slate-900">Rating</p>
+                    <p className="text-sm font-extrabold text-amber-700">{plan.rating?.toFixed?.(1) || '0.0'} / 5</p>
+                  </div>
+                  {plan.reviews?.length > 0 ? (
+                    <p className="mt-2 text-xs text-slate-600 line-clamp-2">
+                      "{plan.reviews[plan.reviews.length - 1].comment}" - {plan.reviews[plan.reviews.length - 1].name}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500">No reviews yet.</p>
+                  )}
+                </div>
+
                 {selectedPlan?._id === plan._id ? (
                   <form onSubmit={handleOrder} className="mt-4 animate-fade-in">
                     <div className="mb-3">
                       <label className="block text-sm font-medium text-gray-800 mb-1 flex items-center">
                         <MapPin className="w-4 h-4 mr-1" /> Delivery Address
                       </label>
+                      {user?.addressBook?.length > 0 && (
+                        <select
+                          className="w-full px-3 py-2 glass-input rounded-lg text-sm mb-2"
+                          defaultValue=""
+                          onChange={(event) => applySavedAddress(event.target.value)}
+                        >
+                          <option value="" disabled>Use saved address</option>
+                          {user.addressBook.map((item) => (
+                            <option key={item._id} value={item._id}>{item.label} - {item.city}</option>
+                          ))}
+                        </select>
+                      )}
                       <textarea 
                         required 
                         rows="2"
@@ -209,6 +278,20 @@ const ProviderMenu = () => {
                         <option value="monthly">Monthly</option>
                       </select>
                     </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-800 mb-1 flex items-center">
+                        <Clock className="w-4 h-4 mr-1" /> Delivery Slot
+                      </label>
+                      <select
+                        className="w-full px-3 py-2 glass-input rounded-lg text-sm cursor-pointer"
+                        value={deliverySlot}
+                        onChange={(e) => setDeliverySlot(e.target.value)}
+                      >
+                        {(providerProfile?.deliverySlots?.length ? providerProfile.deliverySlots : ['12:00 PM - 2:00 PM']).map((slot) => (
+                          <option key={slot} value={slot}>{slot}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="mb-4 rounded-xl bg-amber-50 border border-amber-100 p-3">
                       <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
                         <Calculator className="w-4 h-4 text-amber-700" />
@@ -228,7 +311,7 @@ const ProviderMenu = () => {
                       </button>
                       <button 
                         type="submit" 
-                        disabled={orderLoading}
+                        disabled={orderLoading || providerProfile?.availability === false}
                         className="w-2/3 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-md transition disabled:opacity-50 flex justify-center items-center"
                       >
                         {orderLoading ? <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span> : getExistingRoutine(selectedPlan._id) ? 'Update Routine' : 'Confirm Order'}
@@ -238,6 +321,7 @@ const ProviderMenu = () => {
                 ) : (
                   <button 
                     onClick={() => selectPlan(plan)}
+                    disabled={providerProfile?.availability === false}
                     className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-md transition-transform hover:-translate-y-0.5"
                   >
                     {getExistingRoutine(plan._id) ? 'Edit Routine' : 'Subscribe / Order'}

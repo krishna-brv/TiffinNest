@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { ChefHat, Utensils, ShieldCheck, Heart, ArrowRight } from 'lucide-react';
@@ -163,9 +163,8 @@ const Home = () => {
           </div>
           <p className="text-gray-600 font-medium">© 2026 TiffinNest. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="#" className="text-gray-600 hover:text-orange-600 font-bold transition">Privacy</a>
-            <a href="#" className="text-gray-600 hover:text-orange-600 font-bold transition">Terms</a>
-            <a href="#" className="text-gray-600 hover:text-orange-600 font-bold transition">Contact</a>
+            <button type="button" onClick={() => navigate('/terms')} className="text-gray-600 hover:text-orange-600 font-bold transition">Terms</button>
+            <button type="button" onClick={() => navigate('/contact')} className="text-gray-600 hover:text-orange-600 font-bold transition">Contact</button>
           </div>
         </div>
       </footer>

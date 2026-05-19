@@ -27,6 +27,10 @@ const orderSchema = mongoose.Schema(
       city: { type: String, required: true },
       zipCode: { type: String, required: true },
     },
+    deliverySlot: {
+      type: String,
+      default: '12:00 PM - 2:00 PM',
+    },
     totalPrice: {
       type: Number,
       required: true,
@@ -52,7 +56,7 @@ const orderSchema = mongoose.Schema(
         date: { type: Date, required: true },
         status: {
           type: String,
-          enum: ['scheduled', 'skipped', 'delivered'],
+          enum: ['scheduled', 'skipped', 'delivered', 'paused'],
           default: 'scheduled',
         },
       },

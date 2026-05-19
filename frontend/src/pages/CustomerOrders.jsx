@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { Package, Clock, CheckCircle, IndianRupee, ChefHat, Calculator, CalendarDays, Star } from 'lucide-react';
+import { Package, Clock, CheckCircle, IndianRupee, ChefHat, Calculator, CalendarDays, Star, Ban, FastForward, Pause, Play } from 'lucide-react';
 
 const CustomerOrders = () => {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ const CustomerOrders = () => {
   const [billLoading, setBillLoading] = useState(false);
   const [reviewDrafts, setReviewDrafts] = useState({});
   const [reviewedOrders, setReviewedOrders] = useState({});
+  const [pauseDrafts, setPauseDrafts] = useState({});
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -56,6 +57,15 @@ const CustomerOrders = () => {
     || order.orderSchedule?.some((item) => item.status === 'delivered')
   );
 
+  const getUpcomingScheduledCount = (order) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return order.orderSchedule?.filter((item) => (
+      item.status === 'scheduled' && new Date(item.date) >= today
+    )).length || 0;
+  };
+
   const updateReviewDraft = (orderId, field, value) => {
     setReviewDrafts((current) => ({
       ...current,
@@ -88,6 +98,70 @@ const CustomerOrders = () => {
     }
   };
 
+  const replaceOrder = (updatedOrder) => {
+    setOrders((currentOrders) => currentOrders.map((order) => (
+      order._id === updatedOrder._id ? updatedOrder : order
+    )));
+  };
+
+  const skipNextDelivery = async (order) => {
+    try {
+      const { data } = await api.put(`/orders/${order._id}/skip-next`);
+      replaceOrder(data);
+      alert(`Skipped delivery for ${new Date(data.skippedDate).toLocaleDateString()}.`);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    }
+  };
+
+  const cancelOrder = async (order) => {
+    if (!window.confirm('Cancel this order or routine?')) return;
+
+    try {
+      const { data } = await api.put(`/orders/${order._id}/cancel`);
+      replaceOrder(data);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    }
+  };
+
+  const pauseRoutine = async (order) => {
+    const draft = pauseDrafts[order._id] || {};
+
+    if (!draft.startDate || !draft.endDate) {
+      alert('Choose a pause start and end date.');
+      return;
+    }
+
+    try {
+      const { data } = await api.put(`/orders/${order._id}/pause`, draft);
+      replaceOrder(data);
+      alert(`Paused ${data.pausedCount} scheduled delivery day(s).`);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    }
+  };
+
+  const resumeRoutine = async (order) => {
+    try {
+      const { data } = await api.put(`/orders/${order._id}/resume`);
+      replaceOrder(data);
+      alert(`Resumed ${data.resumedCount} delivery day(s).`);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    }
+  };
+
+  const updatePauseDraft = (orderId, field, value) => {
+    setPauseDrafts((current) => ({
+      ...current,
+      [orderId]: {
+        ...current[orderId],
+        [field]: value,
+      },
+    }));
+  };
+
   const activeOrders = orders.filter(o => ['pending', 'accepted', 'preparing'].includes(o.status));
   const pastOrders = orders.filter(o => ['delivered', 'cancelled', 'rejected'].includes(o.status));
 
@@ -116,12 +190,66 @@ const CustomerOrders = () => {
               </p>
             </div>
             <div className="bg-amber-50 border border-amber-100 rounded-lg p-3">
-              <p className="text-xs font-bold text-amber-700 uppercase">Month Orders</p>
-              <p className="text-sm text-slate-800">{order.orderSchedule?.length || 1} scheduled</p>
+              <p className="text-xs font-bold text-amber-700 uppercase">Upcoming</p>
+              <p className="text-sm text-slate-800">{getUpcomingScheduledCount(order)} left</p>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
               <p className="text-xs font-bold text-slate-600 uppercase">Routine Bill</p>
               <p className="text-sm text-slate-900 font-bold">Rs. {order.monthlyBill || order.totalPrice}</p>
+            </div>
+          </div>
+        )}
+        {order.deliverySlot && (
+          <p className="mt-3 text-sm font-semibold text-slate-600 flex items-center gap-2">
+            <Clock className="w-4 h-4" /> Delivery slot: {order.deliverySlot}
+          </p>
+        )}
+        {['pending', 'accepted', 'preparing'].includes(order.status) && (
+          <div className="mt-4 flex flex-col gap-3">
+            {order.subscriptionType !== 'one-time' && (
+              <div className="rounded-xl border border-slate-200 bg-white/60 p-3">
+                <p className="mb-2 text-xs font-bold uppercase text-slate-500">Pause routine</p>
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto] gap-2">
+                  <input
+                    type="date"
+                    className="glass-input rounded-lg px-3 py-2 text-sm text-slate-950"
+                    value={pauseDrafts[order._id]?.startDate || ''}
+                    onChange={(e) => updatePauseDraft(order._id, 'startDate', e.target.value)}
+                  />
+                  <input
+                    type="date"
+                    className="glass-input rounded-lg px-3 py-2 text-sm text-slate-950"
+                    value={pauseDrafts[order._id]?.endDate || ''}
+                    onChange={(e) => updatePauseDraft(order._id, 'endDate', e.target.value)}
+                  />
+                  <button type="button" onClick={() => pauseRoutine(order)} className="action-button bg-amber-400 hover:bg-amber-500 text-slate-950">
+                    <Pause className="w-4 h-4" /> Pause
+                  </button>
+                  {order.orderSchedule?.some((item) => item.status === 'paused') && (
+                    <button type="button" onClick={() => resumeRoutine(order)} className="action-button bg-teal-600 hover:bg-teal-700 text-white">
+                      <Play className="w-4 h-4" /> Resume
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+            {order.subscriptionType !== 'one-time' && order.nextOrderDate && (
+              <button
+                type="button"
+                onClick={() => skipNextDelivery(order)}
+                className="action-button bg-white hover:bg-slate-50 text-slate-800 border border-slate-200"
+              >
+                <FastForward className="w-4 h-4" /> Skip Next
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => cancelOrder(order)}
+              className="action-button bg-rose-500 hover:bg-rose-600 text-white"
+            >
+              <Ban className="w-4 h-4" /> Cancel
+            </button>
             </div>
           </div>
         )}

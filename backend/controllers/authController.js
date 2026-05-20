@@ -28,7 +28,8 @@ export const registerUser = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, email, password, role } = req.body;
+  const { name, password, role } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
 
   try {
     const userExists = await User.findOne({ email });
@@ -63,7 +64,8 @@ export const authUser = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
 
   try {
     const user = await User.findOne({ email });
@@ -106,7 +108,7 @@ export const refreshToken = async (req, res) => {
 // @route   POST /api/auth/forgot-password
 // @access  Public
 export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
 
   if (!email) {
     return res.status(400).json({ message: 'Email is required' });

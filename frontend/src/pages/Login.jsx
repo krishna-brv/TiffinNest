@@ -38,10 +38,12 @@ const Login = () => {
     setResetLoading(true);
     try {
       const { data } = await api.post('/auth/forgot-password', { email });
-      addToast(data.message, 'success');
       if (data.resetToken) {
+        addToast(data.message, 'success');
         setResetToken(data.resetToken);
         setMode('reset');
+      } else {
+        addToast('No matching account was found for that email.', 'error');
       }
     } catch (err) {
       const message = err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || err.message;
@@ -80,6 +82,7 @@ const Login = () => {
     setMode(nextMode);
     setPassword('');
     setConfirmPassword('');
+    setShowPassword(false);
     if (nextMode !== 'reset') {
       setResetToken('');
     }
@@ -90,6 +93,32 @@ const Login = () => {
     : mode === 'forgot'
       ? 'Reset your password'
       : 'Choose a new password';
+
+  const renderPasswordField = ({ label, value, onChange, name = 'password', autoComplete = 'current-password' }) => (
+    <div>
+      <label className="block text-sm font-medium text-slate-800">{label}</label>
+      <div className="relative mt-1">
+        <input
+          name={name}
+          type={showPassword ? 'text' : 'password'}
+          required
+          minLength={name === 'password' ? undefined : '6'}
+          autoComplete={autoComplete}
+          className="appearance-none relative block w-full px-3 py-3 pr-11 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
+          value={value}
+          onChange={onChange}
+        />
+        <button
+          type="button"
+          className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-indigo-600"
+          onClick={() => setShowPassword((current) => !current)}
+          aria-label={showPassword ? 'Hide password' : 'Show password'}
+        >
+          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-transparent">
@@ -130,25 +159,11 @@ const Login = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-800">Password</label>
-              <div className="relative mt-1">
-                <input
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  className="appearance-none relative block w-full px-3 py-3 pr-11 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-indigo-600"
-                  onClick={() => setShowPassword((current) => !current)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
+              {renderPasswordField({
+                label: 'Password',
+                value: password,
+                onChange: (e) => setPassword(e.target.value),
+              })}
             </div>
           </div>
 
@@ -211,26 +226,22 @@ const Login = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-800">New password</label>
-                <input
-                  type="password"
-                  required
-                  minLength="6"
-                  className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                {renderPasswordField({
+                  label: 'New password',
+                  value: password,
+                  onChange: (e) => setPassword(e.target.value),
+                  name: 'newPassword',
+                  autoComplete: 'new-password',
+                })}
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-800">Confirm password</label>
-                <input
-                  type="password"
-                  required
-                  minLength="6"
-                  className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
+                {renderPasswordField({
+                  label: 'Confirm password',
+                  value: confirmPassword,
+                  onChange: (e) => setConfirmPassword(e.target.value),
+                  name: 'confirmPassword',
+                  autoComplete: 'new-password',
+                })}
               </div>
             </div>
             <button

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
-import { Utensils } from 'lucide-react';
+import { Eye, EyeOff, Utensils } from 'lucide-react';
 
 const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('customer');
   const [error, setError] = useState('');
   const { register, loading } = useAuthStore();
@@ -74,14 +75,24 @@ const Register = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-800">Password</label>
-              <input
-                name="password"
-                type="password"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-gray-900 sm:text-sm"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative mt-1">
+                <input
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  className="appearance-none relative block w-full px-3 py-3 pr-11 glass-input rounded-xl text-gray-900 sm:text-sm"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-indigo-600"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-800">I am a</label>

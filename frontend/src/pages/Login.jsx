@@ -3,12 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
 import useUIStore from '../store/uiStore';
-import { KeyRound, Utensils } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Utensils } from 'lucide-react';
 
 const Login = () => {
   const queryParams = new URLSearchParams(window.location.search);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState(queryParams.get('resetToken') ? 'reset' : 'login');
   const [resetToken, setResetToken] = useState(queryParams.get('resetToken') || '');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -130,14 +131,24 @@ const Login = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-800">Password</label>
-              <input
-                name="password"
-                type="password"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative mt-1">
+                <input
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  className="appearance-none relative block w-full px-3 py-3 pr-11 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-indigo-600"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
           </div>
 

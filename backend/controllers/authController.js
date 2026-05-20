@@ -3,9 +3,21 @@ import Order from '../models/Order.js';
 import MealPlan from '../models/MealPlan.js';
 import ProviderProfile from '../models/ProviderProfile.js';
 import Review from '../models/Review.js';
-import generateToken from '../utils/generateToken.js';
+import jwt from 'jsonwebtoken';
+import generateToken, { generateRefreshToken } from '../utils/generateToken.js';
 import { validationResult } from 'express-validator';
 import crypto from 'crypto';
+
+const buildAuthResponse = (user) => ({
+  _id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  favoriteProviders: user.favoriteProviders || [],
+  addressBook: user.addressBook || [],
+  token: generateToken(user._id),
+  refreshToken: generateRefreshToken(user._id),
+});
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -33,15 +45,7 @@ export const registerUser = async (req, res) => {
     });
 
     if (user) {
-      res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        favoriteProviders: user.favoriteProviders || [],
-        addressBook: user.addressBook || [],
-        token: generateToken(user._id),
-      });
+      res.status(201).json(buildAuthResponse(user));
     } else {
       res.status(400).json({ message: 'Invalid user data' });
     }
@@ -65,20 +69,36 @@ export const authUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        favoriteProviders: user.favoriteProviders || [],
-        addressBook: user.addressBook || [],
-        token: generateToken(user._id),
-      });
+      res.json(buildAuthResponse(user));
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Refresh access token
+// @route   POST /api/auth/refresh
+// @access  Public
+export const refreshToken = async (req, res) => {
+  const { refreshToken: token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ message: 'Refresh token is required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+
+    if (!user) {
+      return res.status(401).json({ message: 'Refresh token user not found' });
+    }
+
+    res.json(buildAuthResponse(user));
+  } catch (error) {
+    res.status(401).json({ message: 'Refresh token is invalid or expired' });
   }
 };
 
@@ -148,14 +168,7 @@ export const resetPassword = async (req, res) => {
     user.resetPasswordExpires = undefined;
     await user.save();
 
-    res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      favoriteProviders: user.favoriteProviders || [],
-      token: generateToken(user._id),
-    });
+    res.json(buildAuthResponse(user));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -252,6 +265,7 @@ export const updateUserProfile = async (req, res) => {
       favoriteProviders: updatedUser.favoriteProviders || [],
       addressBook: updatedUser.addressBook || [],
       token: generateToken(updatedUser._id),
+      refreshToken: generateRefreshToken(updatedUser._id),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -294,6 +308,7 @@ export const updateAddressBook = async (req, res) => {
       favoriteProviders: updatedUser.favoriteProviders || [],
       addressBook: updatedUser.addressBook || [],
       token: generateToken(updatedUser._id),
+      refreshToken: generateRefreshToken(updatedUser._id),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

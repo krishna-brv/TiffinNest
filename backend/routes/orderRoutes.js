@@ -12,11 +12,11 @@ import {
   pauseRoutineOrder,
   resumeRoutineOrder,
 } from '../controllers/orderController.js';
-import { protect, provider } from '../middleware/authMiddleware.js';
+import { protect, provider, customerOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.route('/').post(protect, createOrder);
+router.route('/').post(protect, customerOnly, createOrder);
 router.route('/myorders').get(protect, getMyOrders);
 router.route('/monthly-bill').get(protect, getMonthlyBill);
 router.route('/provider').get(protect, provider, getProviderOrders);

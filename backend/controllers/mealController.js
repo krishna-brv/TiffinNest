@@ -90,18 +90,6 @@ export const deleteMealPlan = async (req, res) => {
   }
 };
 
-// @desc    Get meals by provider (duplicate for specific route needs)
-// @route   GET /api/meals/provider/:id
-// @access  Public
-export const getMealsByProvider = async (req, res) => {
-  try {
-    const mealPlans = await MealPlan.find({ provider: req.params.id });
-    res.json(mealPlans);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
 // @desc    Create new review
 // @route   POST /api/meals/:id/reviews
 // @access  Private/Customer

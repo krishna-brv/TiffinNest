@@ -114,6 +114,7 @@ const ProvidersList = () => {
             {visibleProviders.map((provider) => {
               const providerId = provider.user?._id;
               const isFavorite = favoriteIds.has(providerId);
+              const canOpenProvider = Boolean(providerId);
 
               return (
                 <div key={provider._id} className="glass-panel overflow-hidden rounded-2xl hover:scale-[1.02] transition-transform duration-300">
@@ -164,15 +165,17 @@ const ProvidersList = () => {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        className={`rounded-xl px-3 py-2 shadow transition ${isFavorite ? 'bg-rose-500 text-white' : 'bg-white text-slate-700'}`}
+                        className={`rounded-xl px-3 py-2 shadow transition disabled:cursor-not-allowed disabled:opacity-50 ${isFavorite ? 'bg-rose-500 text-white' : 'bg-white text-slate-700'}`}
                         onClick={() => handleToggleFavorite(providerId)}
+                        disabled={!canOpenProvider}
                         title="Toggle favorite"
                       >
                         <Heart className="w-5 h-5" fill={isFavorite ? 'currentColor' : 'none'} />
                       </button>
                       <button 
-                        className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-colors"
+                        className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                         onClick={() => navigate(`/customer/provider/${providerId}`)}
+                        disabled={!canOpenProvider}
                       >
                         View Menu
                       </button>

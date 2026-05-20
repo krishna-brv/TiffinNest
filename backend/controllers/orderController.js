@@ -95,6 +95,14 @@ export const createOrder = async (req, res) => {
       return res.status(404).json({ message: 'Meal plan not found' });
     }
 
+    if (!selectedMealPlan.isActive) {
+      return res.status(400).json({ message: 'Meal plan is not available' });
+    }
+
+    if (selectedMealPlan.provider.toString() !== provider) {
+      return res.status(400).json({ message: 'Meal plan does not belong to this provider' });
+    }
+
     const providerProfile = await ProviderProfile.findOne({ user: provider });
     if (providerProfile && !providerProfile.availability) {
       return res.status(400).json({ message: 'This provider is currently unavailable' });
@@ -487,8 +495,10 @@ export const getMyOrders = async (req, res) => {
 // @access  Private/Customer
 export const getMonthlyBill = async (req, res) => {
   try {
-    const month = Number(req.query.month) || new Date().getMonth();
-    const year = Number(req.query.year) || new Date().getFullYear();
+    const requestedMonth = Number(req.query.month);
+    const requestedYear = Number(req.query.year);
+    const month = Number.isInteger(requestedMonth) ? requestedMonth : new Date().getMonth();
+    const year = Number.isInteger(requestedYear) ? requestedYear : new Date().getFullYear();
     const monthStart = new Date(year, month, 1);
     const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
 

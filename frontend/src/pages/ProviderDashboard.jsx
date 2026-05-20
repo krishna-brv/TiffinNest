@@ -204,7 +204,14 @@ const ProviderDashboard = () => {
             <div className="rounded-2xl bg-white/12 border border-white/15 text-white p-5 min-w-full lg:min-w-80">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase text-slate-300">Kitchen Status</p>
-                <Settings className="w-5 h-5 text-amber-300" />
+                <button
+                  type="button"
+                  onClick={() => navigate('/provider/plans')}
+                  className="rounded-full p-2 text-amber-300 transition hover:bg-white/10 hover:text-amber-200"
+                  aria-label="Edit kitchen settings"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
               </div>
               <p className={`mt-3 inline-flex rounded-full px-3 py-1 text-sm font-bold ${profile?.availability === false ? 'bg-rose-500/20 text-rose-200' : 'bg-teal-400/20 text-teal-200'}`}>
                 {profile?.availability === false ? 'Not accepting orders' : 'Accepting orders'}

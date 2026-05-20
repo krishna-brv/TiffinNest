@@ -18,6 +18,8 @@ import Terms from './pages/Terms';
 import Contact from './pages/Contact';
 import Toast from './components/Toast';
 
+const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5001';
+
 // Protected Route Component
 const ProtectedRoute = ({ children, role }) => {
   const { user, loading } = useAuthStore();
@@ -50,7 +52,7 @@ function App() {
   useEffect(() => {
     if (!user?._id) return undefined;
 
-    const socket = io('http://localhost:5001');
+    const socket = io(socketUrl);
     const orderEvent = user.role === 'provider' ? `new-order-${user._id}` : `order-status-${user._id}`;
     const providerEvent = user.role === 'provider' ? `order-status-${user._id}` : null;
 

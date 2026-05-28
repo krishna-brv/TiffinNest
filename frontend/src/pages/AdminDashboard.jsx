@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
   Ban,
   CheckCircle2,
   ChevronLeft,
@@ -14,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import api from '../services/api';
+import useAuthStore from '../store/authStore';
 import useUIStore from '../store/uiStore';
 
 const orderStatuses = ['pending', 'preparing', 'delivered', 'cancelled'];
@@ -35,6 +35,7 @@ const formatDate = (date) => (
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { logout } = useAuthStore();
   const { addToast } = useUIStore();
   const [activeTab, setActiveTab] = useState('users');
   const [summary, setSummary] = useState({ totalUsers: 0, totalMeals: 0, totalOrders: 0 });
@@ -155,6 +156,11 @@ const AdminDashboard = () => {
     runAction(() => api.delete(`/admin/meals/${mealId}`), 'Meal deleted');
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   const filterOptions = {
     users: [
       ['customer', 'Customers'],
@@ -179,13 +185,15 @@ const AdminDashboard = () => {
     <div className="app-shell">
       <div className="mx-auto max-w-7xl space-y-5">
         <div className="dashboard-hero rounded-2xl p-5 shadow-2xl sm:p-6">
-          <button
-            type="button"
-            onClick={() => navigate('/account')}
-            className="action-button mb-5 bg-white text-slate-900 hover:bg-slate-50"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </button>
+          <div className="mb-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="action-button bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Logout
+            </button>
+          </div>
           <h1 className="text-4xl font-extrabold text-white">Admin Panel</h1>
           <p className="mt-2 text-cyan-50">Search, filter, and manage records without loading the whole database.</p>
         </div>

@@ -1,20 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
 import useUIStore from '../store/uiStore';
-import { Eye, EyeOff, KeyRound, Utensils } from 'lucide-react';
+import AuthLayout from '../components/ui/AuthLayout';
+import Button from '../components/ui/Button';
+import Field from '../components/ui/Field';
+import PasswordField from '../components/ui/PasswordField';
+
+const getDashboardPath = (role) => {
+  if (role === 'admin') return '/admin/dashboard';
+  if (role === 'provider') return '/provider/dashboard';
+  return '/customer/dashboard';
+};
 
 const Login = () => {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const googleButtonRef = useRef(null);
   const queryParams = new URLSearchParams(window.location.search);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [googleRole, setGoogleRole] = useState('customer');
   const [mode, setMode] = useState(queryParams.get('resetToken') ? 'reset' : 'login');
   const [resetToken, setResetToken] = useState(queryParams.get('resetToken') || '');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
-  const { login, loading, setUser } = useAuthStore();
+  const { login, loginWithGoogle, loading, setUser } = useAuthStore();
   const { addToast } = useUIStore();
   const navigate = useNavigate();
 
@@ -23,35 +35,57 @@ const Login = () => {
     try {
       const user = await login(email, password);
       addToast(`Welcome back, ${user.name}!`, 'success');
-      if (user.role === 'provider') {
-        navigate('/provider/dashboard');
-      } else {
-        navigate('/customer/dashboard');
-      }
+      navigate(getDashboardPath(user.role));
     } catch (err) {
       addToast(err, 'error');
     }
   };
 
-  const requestPasswordReset = async (e) => {
-    e.preventDefault();
-    setResetLoading(true);
-    try {
-      const { data } = await api.post('/auth/forgot-password', { email });
-      if (data.resetToken) {
-        addToast(data.message, 'success');
-        setResetToken(data.resetToken);
-        setMode('reset');
-      } else {
-        addToast('No matching account was found for that email.', 'error');
+  useEffect(() => {
+    if (!googleClientId || mode !== 'login') return undefined;
+
+    const handleGoogleCredential = async (response) => {
+      try {
+        const user = await loginWithGoogle(response.credential, googleRole);
+        addToast(`Welcome back, ${user.name}!`, 'success');
+        navigate(getDashboardPath(user.role));
+      } catch (err) {
+        addToast(err, 'error');
       }
-    } catch (err) {
-      const message = err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || err.message;
-      addToast(message, 'error');
-    } finally {
-      setResetLoading(false);
+    };
+
+    const renderGoogleButton = () => {
+      if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+
+      googleButtonRef.current.innerHTML = '';
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredential,
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        width: googleButtonRef.current.offsetWidth || 320,
+        text: 'continue_with',
+      });
+    };
+
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+
+    if (existingScript) {
+      renderGoogleButton();
+      return undefined;
     }
-  };
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = renderGoogleButton;
+    document.body.appendChild(script);
+
+    return undefined;
+  }, [addToast, googleClientId, googleRole, loginWithGoogle, mode, navigate]);
 
   const submitPasswordReset = async (e) => {
     e.preventDefault();
@@ -69,7 +103,7 @@ const Login = () => {
       });
       setUser(data);
       addToast('Password reset successfully.', 'success');
-      navigate(data.role === 'provider' ? '/provider/dashboard' : '/customer/dashboard');
+      navigate(getDashboardPath(data.role));
     } catch (err) {
       const message = err.response?.data?.errors?.[0]?.msg || err.response?.data?.message || err.message;
       addToast(message, 'error');
@@ -88,176 +122,110 @@ const Login = () => {
     }
   };
 
-  const title = mode === 'login'
-    ? 'Sign in to your account'
-    : mode === 'forgot'
-      ? 'Reset your password'
-      : 'Choose a new password';
-
-  const renderPasswordField = ({ label, value, onChange, name = 'password', autoComplete = 'current-password' }) => (
-    <div>
-      <label className="block text-sm font-medium text-slate-800">{label}</label>
-      <div className="relative mt-1">
-        <input
-          name={name}
-          type={showPassword ? 'text' : 'password'}
-          required
-          minLength={name === 'password' ? undefined : '6'}
-          autoComplete={autoComplete}
-          className="appearance-none relative block w-full px-3 py-3 pr-11 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
-          value={value}
-          onChange={onChange}
-        />
-        <button
-          type="button"
-          className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-indigo-600"
-          onClick={() => setShowPassword((current) => !current)}
-          aria-label={showPassword ? 'Hide password' : 'Show password'}
-        >
-          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-        </button>
-      </div>
-    </div>
-  );
+  const title = mode === 'login' ? 'Sign in' : 'Set new password';
+  const subtitle = mode === 'login'
+    ? 'Access your orders, kitchen profile, and routine schedules.'
+    : 'Use your reset token to choose a new password.';
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-transparent">
-      <div className="max-w-md w-full space-y-8 glass-panel p-8 rounded-2xl">
-        <div className="flex flex-col items-center">
-          <div className="h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center">
-            {mode === 'login' ? <Utensils className="text-white h-6 w-6" /> : <KeyRound className="text-white h-6 w-6" />}
+    <AuthLayout
+      title={title}
+      subtitle={subtitle}
+      asideTitle="Clean routines need clean access."
+      asideBody="Short access sessions and refresh tokens keep the app responsive without making providers and customers sign in repeatedly."
+    >
+      {mode === 'login' && (
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <Field
+              label="Email address"
+              name="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <PasswordField
+              label="Password"
+              value={password}
+              visible={showPassword}
+              onToggle={() => setShowPassword((current) => !current)}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-950">
-            {title}
-          </h2>
-          {mode === 'login' ? (
-            <p className="mt-2 text-center text-sm text-slate-600">
-              Or{' '}
-              <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-                create a new account
-              </Link>
-            </p>
-          ) : (
-            <p className="mt-2 text-center text-sm text-slate-600">
-              Use the token generated for your account to update your password.
-            </p>
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Signing in...' : 'Sign in'}
+          </Button>
+          {googleClientId && (
+            <>
+              <div className="flex items-center gap-3 text-xs font-bold uppercase text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />
+                or
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-bold text-slate-700">Continue with Google as</span>
+                <select
+                  className="field-control cursor-pointer"
+                  value={googleRole}
+                  onChange={(e) => setGoogleRole(e.target.value)}
+                >
+                  <option value="customer">Customer (Looking for food)</option>
+                  <option value="provider">Provider (Home cook)</option>
+                </select>
+              </label>
+              <div ref={googleButtonRef} className="flex min-h-11 justify-center" />
+            </>
           )}
-        </div>
-
-        {mode === 'login' && (
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-800">Email address</label>
-              <input
-                name="email"
-                type="email"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              {renderPasswordField({
-                label: 'Password',
-                value: password,
-                onChange: (e) => setPassword(e.target.value),
-              })}
-            </div>
+          <div className="text-center text-sm">
+            <Link to="/register" className="font-bold text-teal-700 hover:text-teal-900">
+              Create account
+            </Link>
           </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
-            >
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => resetFormState('forgot')}
-            className="w-full text-center text-sm font-bold text-indigo-600 hover:text-indigo-500"
-          >
-            Forgot password?
-          </button>
         </form>
-        )}
+      )}
 
-        {mode === 'forgot' && (
-          <form className="mt-8 space-y-6" onSubmit={requestPasswordReset}>
-            <div>
-              <label className="block text-sm font-medium text-slate-800">Email address</label>
-              <input
-                name="email"
-                type="email"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={resetLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 shadow-md transition-all"
-            >
-              {resetLoading ? 'Creating reset token...' : 'Create reset token'}
-            </button>
-            <button type="button" onClick={() => resetFormState('login')} className="w-full text-sm font-bold text-slate-700 hover:text-indigo-600">
-              Back to sign in
-            </button>
-          </form>
-        )}
-
-        {mode === 'reset' && (
-          <form className="mt-8 space-y-6" onSubmit={submitPasswordReset}>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-800">Reset token</label>
-                <input
-                  type="text"
-                  required
-                  className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-slate-950 placeholder:text-slate-400 caret-indigo-600 sm:text-sm"
-                  value={resetToken}
-                  onChange={(e) => setResetToken(e.target.value)}
-                />
-              </div>
-              <div>
-                {renderPasswordField({
-                  label: 'New password',
-                  value: password,
-                  onChange: (e) => setPassword(e.target.value),
-                  name: 'newPassword',
-                  autoComplete: 'new-password',
-                })}
-              </div>
-              <div>
-                {renderPasswordField({
-                  label: 'Confirm password',
-                  value: confirmPassword,
-                  onChange: (e) => setConfirmPassword(e.target.value),
-                  name: 'confirmPassword',
-                  autoComplete: 'new-password',
-                })}
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={resetLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 shadow-md transition-all"
-            >
-              {resetLoading ? 'Updating password...' : 'Update password'}
-            </button>
-            <button type="button" onClick={() => resetFormState('login')} className="w-full text-sm font-bold text-slate-700 hover:text-indigo-600">
-              Back to sign in
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+      {mode === 'reset' && (
+        <form className="space-y-5" onSubmit={submitPasswordReset}>
+          <div className="space-y-4">
+            <Field
+              label="Reset token"
+              type="text"
+              required
+              value={resetToken}
+              onChange={(e) => setResetToken(e.target.value)}
+            />
+            <PasswordField
+              label="New password"
+              value={password}
+              visible={showPassword}
+              onToggle={() => setShowPassword((current) => !current)}
+              onChange={(e) => setPassword(e.target.value)}
+              name="newPassword"
+              autoComplete="new-password"
+              minLength="6"
+            />
+            <PasswordField
+              label="Confirm password"
+              value={confirmPassword}
+              visible={showPassword}
+              onToggle={() => setShowPassword((current) => !current)}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              name="confirmPassword"
+              autoComplete="new-password"
+              minLength="6"
+            />
+          </div>
+          <Button type="submit" disabled={resetLoading} className="w-full">
+            {resetLoading ? 'Updating password...' : 'Update password'}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => resetFormState('login')} className="w-full">
+            Back to sign in
+          </Button>
+        </form>
+      )}
+    </AuthLayout>
   );
 };
 

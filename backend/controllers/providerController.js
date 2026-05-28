@@ -60,7 +60,12 @@ export const getProviders = async (req, res) => {
     if (maxDeliveryFee && !Number.isNaN(Number(maxDeliveryFee))) profileQuery['pricing.deliveryFee'] = { $lte: Number(maxDeliveryFee) };
     if (available === 'true') profileQuery.availability = true;
 
-    const providers = await ProviderProfile.find(profileQuery).populate('user', 'name email');
+    const providers = (await ProviderProfile.find(profileQuery).populate('user', 'name email providerApprovalStatus isBlocked'))
+      .filter((provider) => (
+        provider.user
+        && provider.user.providerApprovalStatus === 'approved'
+        && !provider.user.isBlocked
+      ));
     const providerIds = providers.map((provider) => provider.user?._id).filter(Boolean);
     const mealQuery = { provider: { $in: providerIds }, isActive: true };
 

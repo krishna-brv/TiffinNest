@@ -38,7 +38,7 @@ const ProviderMenu = () => {
           api.get('/orders/myorders'),
           api.get(`/providers/${id}`),
         ]);
-        setMealPlans(plans);
+        setMealPlans(plans.filter((plan) => plan.isActive !== false));
         setMyOrders(orders);
         setProviderProfile(profile);
         setDeliverySlot(profile.deliverySlots?.[0] || profile.deliveryTimings || '12:00 PM - 2:00 PM');
@@ -67,6 +67,8 @@ const ProviderMenu = () => {
   });
 
   const selectPlan = (plan) => {
+    if (plan.isActive === false) return;
+
     const existingRoutine = getExistingRoutine(plan._id);
 
     setSelectedPlan(plan);
@@ -96,6 +98,12 @@ const ProviderMenu = () => {
 
   const handleOrder = async (e) => {
     e.preventDefault();
+
+    if (!selectedPlan || selectedPlan.isActive === false) {
+      alert('This meal is currently unavailable.');
+      return;
+    }
+
     setOrderLoading(true);
     try {
       const existingRoutine = getExistingRoutine(selectedPlan._id);

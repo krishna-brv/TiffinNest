@@ -13,11 +13,44 @@ const buildAuthResponse = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  authProvider: user.authProvider || 'local',
+  isBlocked: user.isBlocked || false,
+  providerApprovalStatus: user.providerApprovalStatus || (user.role === 'provider' ? 'pending' : 'approved'),
   favoriteProviders: user.favoriteProviders || [],
   addressBook: user.addressBook || [],
   token: generateToken(user._id),
   refreshToken: generateRefreshToken(user._id),
 });
+
+const verifyGoogleCredential = async (credential) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    throw new Error('Google sign-in is not configured');
+  }
+
+  const response = await fetch(
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+  );
+
+  if (!response.ok) {
+    throw new Error('Google credential is invalid');
+  }
+
+  const profile = await response.json();
+
+  if (profile.aud !== process.env.GOOGLE_CLIENT_ID) {
+    throw new Error('Google credential was issued for a different client');
+  }
+
+  if (!profile.email_verified) {
+    throw new Error('Google email is not verified');
+  }
+
+  return {
+    googleId: profile.sub,
+    email: profile.email?.trim().toLowerCase(),
+    name: profile.name || profile.email?.split('@')[0] || 'Google user',
+  };
+};
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -30,6 +63,7 @@ export const registerUser = async (req, res) => {
 
   const { name, password, role } = req.body;
   const email = req.body.email?.trim().toLowerCase();
+  const selectedRole = ['customer', 'provider'].includes(role) ? role : 'customer';
 
   try {
     const userExists = await User.findOne({ email });
@@ -42,7 +76,7 @@ export const registerUser = async (req, res) => {
       name,
       email,
       password,
-      role: role || 'customer',
+      role: selectedRole,
     });
 
     if (user) {
@@ -71,6 +105,10 @@ export const authUser = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
+      if (user.isBlocked) {
+        return res.status(403).json({ message: 'Your account has been blocked by admin' });
+      }
+
       res.json(buildAuthResponse(user));
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -80,10 +118,67 @@ export const authUser = async (req, res) => {
   }
 };
 
+// @desc    Auth user with Google credential
+// @route   POST /api/auth/google
+// @access  Public
+export const authWithGoogle = async (req, res) => {
+  const { credential, role } = req.body;
+  const selectedRole = ['customer', 'provider'].includes(role) ? role : 'customer';
+
+  if (!credential) {
+    return res.status(400).json({ message: 'Google credential is required' });
+  }
+
+  try {
+    const googleProfile = await verifyGoogleCredential(credential);
+
+    if (!googleProfile.email) {
+      return res.status(400).json({ message: 'Google account email is required' });
+    }
+
+    let user = await User.findOne({
+      $or: [
+        { googleId: googleProfile.googleId },
+        { email: googleProfile.email },
+      ],
+    });
+
+    if (user) {
+      if (user.isBlocked) {
+        return res.status(403).json({ message: 'Your account has been blocked by admin' });
+      }
+
+      user.googleId = user.googleId || googleProfile.googleId;
+      user.authProvider = user.authProvider === 'local' ? 'local' : 'google';
+      user.name = user.name || googleProfile.name;
+      user.providerApprovalStatus = user.providerApprovalStatus || (user.role === 'provider' ? 'pending' : 'approved');
+      await user.save({ validateBeforeSave: false });
+    } else {
+      user = await User.create({
+        name: googleProfile.name,
+        email: googleProfile.email,
+        authProvider: 'google',
+        googleId: googleProfile.googleId,
+        role: selectedRole,
+        providerApprovalStatus: selectedRole === 'provider' ? 'pending' : 'approved',
+      });
+    }
+
+    res.json(buildAuthResponse(user));
+  } catch (error) {
+    res.status(401).json({ message: error.message });
+  }
+};
+
 // @desc    Refresh access token
 // @route   POST /api/auth/refresh
 // @access  Public
 export const refreshToken = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { refreshToken: token } = req.body;
 
   if (!token) {
@@ -108,6 +203,11 @@ export const refreshToken = async (req, res) => {
 // @route   POST /api/auth/forgot-password
 // @access  Public
 export const forgotPassword = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const email = req.body.email?.trim().toLowerCase();
 
   if (!email) {
@@ -119,17 +219,22 @@ export const forgotPassword = async (req, res) => {
 
     if (!user) {
       return res.json({
-        message: 'If an account exists for this email, a password reset token has been created.',
+        message: 'If an account exists for this email, password reset instructions have been created.',
       });
     }
 
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
 
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/login?resetToken=${resetToken}`;
+
+    if (process.env.RESET_TOKEN_DEBUG === 'true') {
+      console.log(`Password reset link for ${user.email}: ${resetUrl}`);
+    }
+
     res.json({
-      message: 'Password reset token created. Use it within 15 minutes.',
-      resetToken,
-      resetUrl: `/login?resetToken=${resetToken}`,
+      message: 'If an account exists for this email, password reset instructions have been created.',
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -140,6 +245,11 @@ export const forgotPassword = async (req, res) => {
 // @route   POST /api/auth/reset-password
 // @access  Public
 export const resetPassword = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { token, password } = req.body;
 
   if (!token || !password) {
@@ -189,6 +299,9 @@ export const getUserProfile = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        authProvider: user.authProvider || 'local',
+        isBlocked: user.isBlocked || false,
+        providerApprovalStatus: user.providerApprovalStatus || (user.role === 'provider' ? 'pending' : 'approved'),
         favoriteProviders: user.favoriteProviders || [],
         addressBook: user.addressBook || [],
       });
@@ -264,6 +377,9 @@ export const updateUserProfile = async (req, res) => {
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role,
+      authProvider: updatedUser.authProvider || 'local',
+      isBlocked: updatedUser.isBlocked || false,
+      providerApprovalStatus: updatedUser.providerApprovalStatus || (updatedUser.role === 'provider' ? 'pending' : 'approved'),
       favoriteProviders: updatedUser.favoriteProviders || [],
       addressBook: updatedUser.addressBook || [],
       token: generateToken(updatedUser._id),
@@ -307,6 +423,9 @@ export const updateAddressBook = async (req, res) => {
       name: updatedUser.name,
       email: updatedUser.email,
       role: updatedUser.role,
+      authProvider: updatedUser.authProvider || 'local',
+      isBlocked: updatedUser.isBlocked || false,
+      providerApprovalStatus: updatedUser.providerApprovalStatus || (updatedUser.role === 'provider' ? 'pending' : 'approved'),
       favoriteProviders: updatedUser.favoriteProviders || [],
       addressBook: updatedUser.addressBook || [],
       token: generateToken(updatedUser._id),
@@ -338,6 +457,10 @@ export const changePassword = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    if (user.authProvider === 'google' && !user.password) {
+      return res.status(400).json({ message: 'Google accounts do not have a local password to change' });
+    }
+
     const passwordMatches = await user.matchPassword(currentPassword);
 
     if (!passwordMatches) {
@@ -359,10 +482,6 @@ export const changePassword = async (req, res) => {
 export const deleteUserAccount = async (req, res) => {
   const { currentPassword } = req.body;
 
-  if (!currentPassword) {
-    return res.status(400).json({ message: 'Current password is required to delete your account' });
-  }
-
   try {
     const user = await User.findById(req.user._id);
 
@@ -370,10 +489,18 @@ export const deleteUserAccount = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const passwordMatches = await user.matchPassword(currentPassword);
+    const requiresPassword = user.authProvider !== 'google' || Boolean(user.password);
 
-    if (!passwordMatches) {
-      return res.status(401).json({ message: 'Current password is incorrect' });
+    if (requiresPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required to delete your account' });
+      }
+
+      const passwordMatches = await user.matchPassword(currentPassword);
+
+      if (!passwordMatches) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
     }
 
     await User.updateMany(

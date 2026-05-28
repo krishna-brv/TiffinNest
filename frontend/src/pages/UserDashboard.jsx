@@ -25,7 +25,12 @@ const UserDashboard = () => {
   ]);
   const [saving, setSaving] = useState(false);
 
-  const homePath = user?.role === 'provider' ? '/provider/dashboard' : '/customer/dashboard';
+  const homePath = user?.role === 'admin'
+    ? '/admin/dashboard'
+    : user?.role === 'provider'
+      ? '/provider/dashboard'
+      : '/customer/dashboard';
+  const isGoogleOnlyAccount = user?.authProvider === 'google';
 
   const showForm = (formName) => {
     setActiveForm(formName);
@@ -90,7 +95,7 @@ const UserDashboard = () => {
     setSaving(true);
     try {
       await api.delete('/auth/profile', {
-        data: { currentPassword: deleteForm.currentPassword },
+        data: isGoogleOnlyAccount ? {} : { currentPassword: deleteForm.currentPassword },
       });
       logout();
       addToast('Account deleted successfully.', 'success');
@@ -185,15 +190,17 @@ const UserDashboard = () => {
                   <span className="block text-xl font-bold text-slate-950">Edit Profile</span>
                   <span className="block text-sm text-slate-700 mt-1">Change your display name. Email stays locked.</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => showForm('password')}
-                  className="account-action-card slide-color-card rounded-2xl p-6 text-left shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl"
-                >
-                  <LockKeyhole className="w-7 h-7 text-amber-700 mb-4 dark:text-amber-400" />
-                  <span className="block text-xl font-bold text-slate-950">Change Password</span>
-                  <span className="block text-sm text-slate-700 mt-1">Verify your current password first.</span>
-                </button>
+                {!isGoogleOnlyAccount && (
+                  <button
+                    type="button"
+                    onClick={() => showForm('password')}
+                    className="account-action-card slide-color-card rounded-2xl p-6 text-left shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl"
+                  >
+                    <LockKeyhole className="w-7 h-7 text-amber-700 mb-4 dark:text-amber-400" />
+                    <span className="block text-xl font-bold text-slate-950">Change Password</span>
+                    <span className="block text-sm text-slate-700 mt-1">Verify your current password first.</span>
+                  </button>
+                )}
                 {user?.role === 'customer' && (
                   <button
                     type="button"
@@ -203,6 +210,17 @@ const UserDashboard = () => {
                     <Home className="w-7 h-7 text-indigo-700 mb-4" />
                     <span className="block text-xl font-bold text-slate-950">Address Book</span>
                     <span className="block text-sm text-slate-700 mt-1">Save home, office, or hostel delivery addresses.</span>
+                  </button>
+                )}
+                {user?.role === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/dashboard')}
+                    className="account-action-card slide-color-card rounded-2xl p-6 text-left shadow-lg transition-all hover:-translate-y-1 hover:shadow-2xl"
+                  >
+                    <ShieldCheck className="w-7 h-7 text-teal-700 mb-4" />
+                    <span className="block text-xl font-bold text-slate-950">Admin Panel</span>
+                    <span className="block text-sm text-slate-700 mt-1">Manage users, meals, orders, providers, and complaints.</span>
                   </button>
                 )}
                 <button
@@ -343,16 +361,23 @@ const UserDashboard = () => {
                   This permanently removes your account. Customer orders are deleted. Provider accounts also remove kitchen profile, meal plans, and provider orders.
                 </p>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-800 mb-1">Current Password</label>
-                <input
-                  type="password"
-                  required
-                  className="glass-input w-full rounded-xl px-4 py-3 text-slate-950 caret-rose-600"
-                  value={deleteForm.currentPassword}
-                  onChange={(event) => setDeleteForm({ ...deleteForm, currentPassword: event.target.value })}
-                />
-              </div>
+              {!isGoogleOnlyAccount && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-800 mb-1">Current Password</label>
+                  <input
+                    type="password"
+                    required
+                    className="glass-input w-full rounded-xl px-4 py-3 text-slate-950 caret-rose-600"
+                    value={deleteForm.currentPassword}
+                    onChange={(event) => setDeleteForm({ ...deleteForm, currentPassword: event.target.value })}
+                  />
+                </div>
+              )}
+              {isGoogleOnlyAccount && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+                  This account uses Google sign-in, so no app password is required. Type DELETE to confirm.
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-bold text-slate-800 mb-1">Type DELETE to confirm</label>
                 <input

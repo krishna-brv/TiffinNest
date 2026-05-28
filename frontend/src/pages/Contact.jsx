@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Mail, MapPin, Phone, Utensils } from 'lucide-react';
+import { ArrowLeft, Mail, MessageSquare, ShieldCheck, Utensils } from 'lucide-react';
 
 const Contact = () => (
   <div className="app-shell">
@@ -22,17 +22,17 @@ const Contact = () => (
             </a>
           </div>
           <div className="dashboard-card rounded-2xl p-5">
-            <Phone className="w-7 h-7 text-amber-700 mb-4" />
-            <p className="text-sm font-bold uppercase text-slate-500">Phone</p>
-            <a href="tel:000000000" className="mt-1 block font-extrabold text-slate-950 hover:text-amber-700">
-              000000000
-            </a>
+            <MessageSquare className="w-7 h-7 text-amber-700 mb-4" />
+            <p className="text-sm font-bold uppercase text-slate-500">Support</p>
+            <p className="mt-1 font-extrabold text-slate-950">
+              Use email for account, order, or provider-profile help.
+            </p>
           </div>
           <div className="dashboard-card rounded-2xl p-5">
-            <MapPin className="w-7 h-7 text-indigo-700 mb-4" />
-            <p className="text-sm font-bold uppercase text-slate-500">Address</p>
+            <ShieldCheck className="w-7 h-7 text-indigo-700 mb-4" />
+            <p className="text-sm font-bold uppercase text-slate-500">Privacy</p>
             <p className="mt-1 font-extrabold text-slate-950">
-              TiffinNest Admin Office, 42 Community Kitchen Lane, Hyderabad, Telangana 500001
+              Do not share passwords, reset tokens, or payment details in support messages.
             </p>
           </div>
         </div>

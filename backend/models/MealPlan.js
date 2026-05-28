@@ -70,6 +70,9 @@ const mealPlanSchema = mongoose.Schema(
   }
 );
 
+mealPlanSchema.index({ name: 'text', description: 'text', items: 'text' });
+mealPlanSchema.index({ provider: 1, isActive: 1 });
+
 const MealPlan = mongoose.model('MealPlan', mealPlanSchema);
 
 export default MealPlan;

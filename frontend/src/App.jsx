@@ -14,6 +14,7 @@ import ProviderPlans from './pages/ProviderPlans';
 import ProviderOrders from './pages/ProviderOrders';
 import ProviderMenu from './pages/ProviderMenu';
 import UserDashboard from './pages/UserDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import Terms from './pages/Terms';
 import Contact from './pages/Contact';
 import Toast from './components/Toast';
@@ -85,6 +86,9 @@ function App() {
           <Route path="/customer/provider/:id" element={<ProtectedRoute role="customer"><ProviderMenu /></ProtectedRoute>} />
           <Route path="/customer/orders" element={<ProtectedRoute role="customer"><CustomerOrders /></ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+
+          {/* Admin Routes */}
+          <Route path="/admin/dashboard" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
           
           {/* Provider Routes */}
           <Route path="/provider/dashboard" element={<ProtectedRoute role="provider"><ProviderDashboard /></ProtectedRoute>} />

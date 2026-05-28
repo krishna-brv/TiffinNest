@@ -8,14 +8,18 @@ import {
   Clock,
   IndianRupee,
   LogOut,
+  Moon,
   PackageCheck,
   Settings,
+  Sun,
   Trophy,
   UserCircle,
   Utensils,
 } from 'lucide-react';
 import api from '../services/api';
 import useAuthStore from '../store/authStore';
+import useUIStore from '../store/uiStore';
+import MetricCard from '../components/ui/MetricCard';
 
 const getLocalDateKey = (date) => {
   const nextDate = new Date(date);
@@ -49,7 +53,7 @@ const ProviderMiniCalendar = ({ orderDates, selectedDateKey, onSelectDate }) => 
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs font-bold uppercase text-blue-700">Order Calendar</p>
-          <h2 className="text-xl font-extrabold text-slate-950">
+          <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-50">
             {today.toLocaleString('default', { month: 'long' })} {year}
           </h2>
         </div>
@@ -79,7 +83,7 @@ const ProviderMiniCalendar = ({ orderDates, selectedDateKey, onSelectDate }) => 
                   : isToday
                     ? 'bg-amber-300 text-slate-950 font-extrabold'
                     : day
-                      ? 'bg-slate-100 text-slate-800 hover:bg-blue-50'
+                      ? 'bg-slate-100 text-slate-800 hover:bg-blue-50 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/20'
                       : ''
               }`}
             >
@@ -97,6 +101,7 @@ const ProviderMiniCalendar = ({ orderDates, selectedDateKey, onSelectDate }) => 
 
 const ProviderDashboard = () => {
   const { user, logout } = useAuthStore();
+  const { theme, toggleTheme } = useUIStore();
   const navigate = useNavigate();
   const [analytics, setAnalytics] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -175,10 +180,31 @@ const ProviderDashboard = () => {
 
   return (
     <div className="app-shell">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="dashboard-hero rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="flex flex-col lg:flex-row justify-between gap-6">
-            <div className="max-w-3xl">
+      <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[12rem_1fr]">
+        <aside className="dashboard-panel rounded-2xl p-3 lg:sticky lg:top-6 lg:self-start">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+            <button onClick={() => navigate('/account')} className="action-button slide-color-card bg-white hover:bg-slate-50 text-slate-900 dark:bg-white/10 dark:text-white dark:hover:bg-white/20">
+              <UserCircle className="w-4 h-4" /> Account
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="action-button bg-white text-slate-900 hover:bg-slate-50 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              {theme === 'light' ? 'Dark' : 'Light'}
+            </button>
+            <button onClick={handleLogout} className="action-button bg-red-500/90 hover:bg-red-600 text-white lg:col-span-1 col-span-2">
+              <LogOut className="w-4 h-4" /> Logout
+            </button>
+          </div>
+        </aside>
+
+        <div className="space-y-4">
+          <div className="dashboard-hero rounded-2xl p-5 sm:p-6 shadow-2xl">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_20rem] lg:items-start">
+              <div className="min-w-0">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm font-bold text-orange-100 mb-4">
                 <ChefHat className="w-4 h-4" /> Provider workspace
               </div>
@@ -193,15 +219,9 @@ const ProviderDashboard = () => {
                 <button onClick={() => navigate('/provider/plans')} className="action-button bg-orange-500 hover:bg-orange-600 text-white">
                   <Utensils className="w-4 h-4" /> Menu & Profile
                 </button>
-                <button onClick={() => navigate('/account')} className="action-button slide-color-card bg-white/95 hover:bg-white text-slate-900">
-                  <UserCircle className="w-4 h-4" /> Account
-                </button>
-                <button onClick={handleLogout} className="action-button bg-red-500/90 hover:bg-red-600 text-white">
-                  <LogOut className="w-4 h-4" /> Logout
-                </button>
               </div>
             </div>
-            <div className="rounded-2xl bg-white/12 border border-white/15 text-white p-5 min-w-full lg:min-w-80">
+            <div className="rounded-2xl bg-white/12 border border-white/15 text-white p-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-bold uppercase text-slate-300">Kitchen Status</p>
                 <button
@@ -228,15 +248,14 @@ const ProviderDashboard = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((item) => {
-            const Icon = item.icon;
             return (
-              <div key={item.label} className="dashboard-card slide-color-card rounded-2xl p-5">
-                <div className={`mb-3 inline-flex rounded-xl p-2 ${item.color}`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <p className="text-xs font-bold uppercase text-slate-500">{item.label}</p>
-                <p className="mt-1 text-2xl font-extrabold text-slate-950 truncate">{item.value}</p>
-              </div>
+              <MetricCard
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                icon={item.icon}
+                tone={item.label === 'Active Order Value' ? 'amber' : 'blue'}
+              />
             );
           })}
         </div>
@@ -244,25 +263,25 @@ const ProviderDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-6">
           <div className="dashboard-panel rounded-2xl p-6">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-950">Prep Queue</h2>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Prep Queue</h2>
               <button onClick={() => navigate('/provider/orders')} className="text-sm font-bold text-blue-700 hover:text-blue-800">Manage orders</button>
             </div>
             {activeOrders.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-indigo-700">
                 <Clock className="mx-auto mb-3 w-8 h-8 text-blue-400" />
-                <p className="font-bold text-slate-900">No active prep right now</p>
-                <p className="text-sm text-slate-600">New and accepted orders will appear here.</p>
+                <p className="font-bold text-slate-900 dark:text-slate-100">No active prep right now</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">New and accepted orders will appear here.</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {activeOrders.map((order) => (
                   <div key={order._id} className="dashboard-card grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 rounded-xl p-4">
                     <div>
-                      <p className="font-bold text-slate-950">{order.mealPlan?.name || 'Deleted Plan'}</p>
-                      <p className="text-sm text-slate-600">{order.customer?.name || 'Customer'} • {order.deliverySlot || 'Slot not set'}</p>
+                      <p className="font-bold text-slate-900 dark:text-slate-50">{order.mealPlan?.name || 'Deleted Plan'}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">{order.customer?.name || 'Customer'} • {order.deliverySlot || 'Slot not set'}</p>
                     </div>
                     <span className="self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-700">{order.status}</span>
-                    <p className="self-start text-sm font-extrabold text-slate-950">Rs. {order.totalPrice}</p>
+                    <p className="self-start text-sm font-extrabold text-slate-900 dark:text-slate-50">Rs. {order.totalPrice}</p>
                   </div>
                 ))}
               </div>
@@ -279,10 +298,10 @@ const ProviderDashboard = () => {
             <div className="dashboard-panel rounded-2xl p-6">
               <div className="mb-5 flex items-center gap-2">
                 <Trophy className="w-6 h-6 text-amber-600" />
-                <h2 className="text-2xl font-bold text-slate-950">Top Meal</h2>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Top Meal</h2>
               </div>
-              <p className="text-3xl font-extrabold text-slate-950">{analytics?.topMeal?.name || 'None yet'}</p>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="text-3xl font-extrabold text-slate-900 dark:text-slate-50">{analytics?.topMeal?.name || 'None yet'}</p>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                 {analytics?.topMeal ? `${analytics.topMeal.count} orders so far.` : 'Create plans and accept orders to build a top seller.'}
               </p>
               <button onClick={() => navigate('/provider/plans')} className="mt-6 action-button bg-orange-500 hover:bg-orange-600 text-white w-full">
@@ -296,16 +315,16 @@ const ProviderDashboard = () => {
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-bold uppercase text-blue-700">Selected Date</p>
-              <h2 className="text-2xl font-bold text-slate-950">{formatFullDate(selectedDateKey)}</h2>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatFullDate(selectedDateKey)}</h2>
             </div>
             <button onClick={() => navigate('/provider/orders')} className="text-sm font-bold text-blue-700 hover:text-blue-800">Manage all orders</button>
           </div>
 
           {calendarData.selectedDateOrders.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-indigo-700">
               <CalendarCheck className="mx-auto mb-3 h-8 w-8 text-blue-400" />
-              <p className="font-bold text-slate-900">No orders on this date</p>
-              <p className="text-sm text-slate-600">Click a marked date to see the prep list for that day.</p>
+              <p className="font-bold text-slate-900 dark:text-slate-100">No orders on this date</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">Click a marked date to see the prep list for that day.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -313,8 +332,8 @@ const ProviderDashboard = () => {
                 <div key={`${order._id}-${scheduleDate}`} className="dashboard-card rounded-xl p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-bold text-slate-950">{order.mealPlan?.name || 'Deleted Plan'}</p>
-                      <p className="text-sm text-slate-600">{order.customer?.name || 'Customer'} - {order.deliverySlot || 'Slot not set'}</p>
+                      <p className="font-bold text-slate-900 dark:text-slate-50">{order.mealPlan?.name || 'Deleted Plan'}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">{order.customer?.name || 'Customer'} - {order.deliverySlot || 'Slot not set'}</p>
                     </div>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-700">
                       {scheduleStatus}
@@ -329,6 +348,7 @@ const ProviderDashboard = () => {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

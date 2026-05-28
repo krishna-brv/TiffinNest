@@ -42,6 +42,20 @@ const useAuthStore = create((set) => ({
     }
   },
 
+  loginWithGoogle: async (credential, role) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.post('/auth/google', { credential, role });
+      set({ user: data, loading: false });
+      localStorage.setItem('userInfo', JSON.stringify(data));
+      return data;
+    } catch (error) {
+      set({ loading: false });
+      const errorMessage = error.response?.data?.errors?.[0]?.msg || error.response?.data?.message || error.message;
+      throw errorMessage;
+    }
+  },
+
   logout: () => {
     set({ user: null });
     localStorage.removeItem('userInfo');

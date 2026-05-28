@@ -67,6 +67,9 @@ const orderSchema = mongoose.Schema(
   }
 );
 
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ customer: 1, provider: 1, mealPlan: 1 });
+
 const Order = mongoose.model('Order', orderSchema);
 
 export default Order;

@@ -1,124 +1,169 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
-import { Eye, EyeOff, Utensils } from 'lucide-react';
+import AuthLayout from '../components/ui/AuthLayout';
+import Button from '../components/ui/Button';
+import Field from '../components/ui/Field';
+import PasswordField from '../components/ui/PasswordField';
+
+const getDashboardPath = (role) => {
+  if (role === 'admin') return '/admin/dashboard';
+  if (role === 'provider') return '/provider/dashboard';
+  return '/customer/dashboard';
+};
 
 const Register = () => {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const googleButtonRef = useRef(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState('customer');
   const [error, setError] = useState('');
-  const { register, loading } = useAuthStore();
+  const { register, loginWithGoogle, loading } = useAuthStore();
   const navigate = useNavigate();
+
+  const redirectForRole = useCallback((user) => {
+    navigate(getDashboardPath(user.role));
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const user = await register(name, email, password, role);
-      if (user.role === 'provider') {
-        navigate('/provider/dashboard');
-      } else {
-        navigate('/customer/dashboard');
-      }
+      redirectForRole(user);
     } catch (err) {
       setError(err);
     }
   };
 
+  useEffect(() => {
+    if (!googleClientId) return undefined;
+
+    const handleGoogleCredential = async (response) => {
+      try {
+        const user = await loginWithGoogle(response.credential, role);
+        redirectForRole(user);
+      } catch (err) {
+        setError(err);
+      }
+    };
+
+    const renderGoogleButton = () => {
+      if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+
+      googleButtonRef.current.innerHTML = '';
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredential,
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        width: googleButtonRef.current.offsetWidth || 320,
+        text: 'continue_with',
+      });
+    };
+
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+
+    if (existingScript) {
+      renderGoogleButton();
+      return undefined;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = renderGoogleButton;
+    document.body.appendChild(script);
+
+    return undefined;
+  }, [googleClientId, loginWithGoogle, redirectForRole, role]);
+
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-transparent">
-      <div className="max-w-md w-full space-y-8 glass-panel p-8 rounded-2xl">
-        <div className="flex flex-col items-center">
-          <div className="h-12 w-12 bg-indigo-600 rounded-full flex items-center justify-center">
-            <Utensils className="text-white h-6 w-6" />
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create an account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-              Sign in
-            </Link>
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+    <AuthLayout
+      title="Create account"
+      subtitle="Join as a customer or provider with the same secure account flow."
+      asideTitle="One system for kitchens and customers."
+      asideBody="Customers manage routines and addresses. Providers manage availability, meal plans, and prep queues from a focused workspace."
+    >
+        <form className="space-y-5" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
               {error}
             </div>
           )}
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-              <input
+          <div className="space-y-4">
+            <Field
+              label="Full name"
                 name="name"
                 type="text"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-gray-900 sm:text-sm"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-800">Email address</label>
-              <input
+            <Field
+              label="Email address"
                 name="email"
                 type="email"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-3 glass-input rounded-xl text-gray-900 sm:text-sm"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-800">Password</label>
-              <div className="relative mt-1">
-                <input
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  className="appearance-none relative block w-full px-3 py-3 pr-11 glass-input rounded-xl text-gray-900 sm:text-sm"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-indigo-600"
-                  onClick={() => setShowPassword((current) => !current)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-800">I am a</label>
+            <PasswordField
+              label="Password"
+              value={password}
+              visible={showPassword}
+              onToggle={() => setShowPassword((current) => !current)}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength="6"
+            />
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-slate-700">Account type</span>
               <select
-                className="mt-1 block w-full pl-3 pr-10 py-3 text-base glass-input rounded-xl text-gray-900 sm:text-sm cursor-pointer"
+                className="field-control cursor-pointer"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
               >
                 <option value="customer">Customer (Looking for food)</option>
                 <option value="provider">Provider (Home cook)</option>
               </select>
-            </div>
+            </label>
           </div>
 
-          <div>
-            <button
+          {googleClientId && (
+            <>
+              <div className="flex items-center gap-3 text-xs font-bold uppercase text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />
+                or
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+              <div className="rounded-lg border border-teal-100 bg-teal-50 px-3 py-2 text-center text-sm font-semibold text-teal-800">
+                Google will create a {role} account.
+              </div>
+              <div ref={googleButtonRef} className="flex min-h-11 justify-center" />
+            </>
+          )}
+
+            <Button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-0.5"
+              className="w-full"
             >
               {loading ? 'Signing up...' : 'Sign up'}
-            </button>
-          </div>
+            </Button>
+          <p className="text-center text-sm text-slate-600">
+            Already have an account?{' '}
+            <Link to="/login" className="font-bold text-teal-700 hover:text-teal-900">
+              Sign in
+            </Link>
+          </p>
         </form>
-      </div>
-    </div>
+    </AuthLayout>
   );
 };
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { registerUser, authUser, refreshToken, getUserProfile, updateUserProfile, changePassword, toggleFavoriteProvider, forgotPassword, resetPassword, deleteUserAccount, updateAddressBook } from '../controllers/authController.js';
+import { registerUser, authUser, authWithGoogle, refreshToken, getUserProfile, updateUserProfile, changePassword, toggleFavoriteProvider, resetPassword, deleteUserAccount, updateAddressBook } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -24,7 +24,7 @@ router.post(
   authUser
 );
 
-router.post('/forgot-password', [body('email', 'Please include a valid email').isEmail()], forgotPassword);
+router.post('/google', authWithGoogle);
 router.post('/refresh', [body('refreshToken', 'Refresh token is required').not().isEmpty()], refreshToken);
 router.post(
   '/reset-password',

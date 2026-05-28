@@ -7,13 +7,17 @@ import {
   Heart,
   IndianRupee,
   LogOut,
+  Moon,
   PackageCheck,
   Search,
   Sparkles,
+  Sun,
   UserCircle,
 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import useOrderStore from '../store/orderStore';
+import useUIStore from '../store/uiStore';
+import MetricCard from '../components/ui/MetricCard';
 
 const getLocalDateKey = (date) => {
   const nextDate = new Date(date);
@@ -47,7 +51,7 @@ const MiniCalendar = ({ subscriptionDates, selectedDateKey, onSelectDate }) => {
   ];
 
   return (
-    <div className="w-full max-w-72 rounded-2xl bg-slate-950 text-white p-4 shadow-2xl">
+    <div className="w-full max-w-72 rounded-2xl bg-blue-950/55 p-4 text-white shadow-2xl ring-1 ring-white/15 backdrop-blur">
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-teal-200">Routine Calendar</p>
@@ -100,6 +104,7 @@ const MiniCalendar = ({ subscriptionDates, selectedDateKey, onSelectDate }) => {
 const CustomerDashboard = () => {
   const { user, logout } = useAuthStore();
   const { orders, fetchMyOrders, loading } = useOrderStore();
+  const { theme, toggleTheme } = useUIStore();
   const [selectedDateKey, setSelectedDateKey] = useState(getLocalDateKey(new Date()));
   const navigate = useNavigate();
 
@@ -179,83 +184,95 @@ const CustomerDashboard = () => {
 
   return (
     <div className="app-shell">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="dashboard-hero rounded-2xl p-6 sm:p-8 shadow-2xl">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_18rem] gap-6 items-start">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm font-bold text-cyan-100 mb-4">
-                <Sparkles className="w-4 h-4" /> Customer dashboard
+      <div className="mx-auto grid max-w-7xl gap-4 lg:grid-cols-[12rem_1fr]">
+        <aside className="dashboard-panel rounded-2xl p-3 lg:sticky lg:top-6 lg:self-start">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+            <button onClick={() => navigate('/account')} className="action-button slide-color-card bg-white text-slate-900 hover:text-white dark:bg-white/10 dark:text-white">
+              <UserCircle className="w-4 h-4" /> Account
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="action-button bg-white text-slate-900 hover:bg-slate-50 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
+              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              {theme === 'light' ? 'Dark' : 'Light'}
+            </button>
+            <button onClick={handleLogout} className="action-button bg-rose-500 hover:bg-rose-600 text-white lg:col-span-1 col-span-2">
+              <LogOut className="w-4 h-4" /> Logout
+            </button>
+          </div>
+        </aside>
+
+        <div className="space-y-4">
+          <div className="dashboard-hero rounded-2xl p-5 sm:p-6 shadow-2xl">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_18rem] lg:items-start">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm font-bold text-cyan-100 mb-4">
+                  <Sparkles className="w-4 h-4" /> Customer dashboard
+                </div>
+                <h1 className="text-4xl font-extrabold text-white mb-2">Welcome back, {user?.name}</h1>
+                <p className="text-cyan-50 font-medium text-lg">
+                  Track todayâ€™s food flow, keep routines under control, and jump back into your favorite kitchens.
+                </p>
+                <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                  <button onClick={() => navigate('/customer/providers')} className="action-button slide-color-card bg-teal-600 text-white">
+                    <Search className="w-4 h-4" /> Browse Providers
+                  </button>
+                  <button onClick={() => navigate('/customer/orders')} className="action-button slide-color-card slide-color-card--dark bg-slate-950 text-white">
+                    <ClipboardList className="w-4 h-4" /> My Orders
+                  </button>
+                </div>
+                <div className="mt-4 rounded-2xl bg-white/12 border border-white/15 p-5 max-w-xl">
+                  <p className="text-xs font-bold uppercase text-cyan-100">Next Routine</p>
+                  <p className="mt-2 text-2xl font-extrabold text-white">{formatDate(dashboard.nextOrder?.nextOrderDate)}</p>
+                  <p className="mt-1 text-sm text-cyan-50">{dashboard.nextOrder?.mealPlan?.name || 'No upcoming routine scheduled'}</p>
+                  {dashboard.nextOrder?.deliverySlot && (
+                    <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700">
+                      <Clock className="w-3.5 h-3.5" /> {dashboard.nextOrder.deliverySlot}
+                    </p>
+                  )}
+                </div>
               </div>
-              <h1 className="text-4xl font-extrabold text-white mb-2">Welcome back, {user?.name}</h1>
-              <p className="text-cyan-50 font-medium text-lg">
-                Track today’s food flow, keep routines under control, and jump back into your favorite kitchens.
-              </p>
-              <div className="mt-5 flex flex-col sm:flex-row gap-3">
-                <button onClick={() => navigate('/customer/providers')} className="action-button bg-teal-600 hover:bg-teal-700 text-white">
-                  <Search className="w-4 h-4" /> Browse Providers
-                </button>
-                <button onClick={() => navigate('/customer/orders')} className="action-button bg-slate-950 hover:bg-slate-800 text-white">
-                  <ClipboardList className="w-4 h-4" /> My Orders
-                </button>
+              <div className="w-full lg:w-72 lg:justify-self-end">
+                <MiniCalendar
+                  subscriptionDates={dashboard.subscriptionDates}
+                  selectedDateKey={selectedDateKey}
+                  onSelectDate={setSelectedDateKey}
+                />
               </div>
-              <div className="mt-6 rounded-2xl bg-white/12 border border-white/15 p-5 max-w-xl">
-                <p className="text-xs font-bold uppercase text-cyan-100">Next Routine</p>
-                <p className="mt-2 text-2xl font-extrabold text-white">{formatDate(dashboard.nextOrder?.nextOrderDate)}</p>
-                <p className="mt-1 text-sm text-cyan-50">{dashboard.nextOrder?.mealPlan?.name || 'No upcoming routine scheduled'}</p>
-                {dashboard.nextOrder?.deliverySlot && (
-                  <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700">
-                    <Clock className="w-3.5 h-3.5" /> {dashboard.nextOrder.deliverySlot}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="w-full lg:w-72 lg:justify-self-end">
-              <div className="mb-3 grid grid-cols-2 gap-2">
-                <button onClick={() => navigate('/account')} className="action-button slide-color-card bg-white/95 hover:bg-white text-slate-900 px-3 py-2 text-sm">
-                  <UserCircle className="w-4 h-4" /> Account
-                </button>
-                <button onClick={handleLogout} className="action-button bg-rose-500 hover:bg-rose-600 text-white px-3 py-2 text-sm">
-                  <LogOut className="w-4 h-4" /> Logout
-                </button>
-              </div>
-              <MiniCalendar
-                subscriptionDates={dashboard.subscriptionDates}
-                selectedDateKey={selectedDateKey}
-                onSelectDate={setSelectedDateKey}
-              />
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.label} className="dashboard-card slide-color-card rounded-2xl p-5">
-                <div className={`mb-4 inline-flex rounded-xl p-2 ${item.color}`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <p className="text-sm font-bold text-slate-500 uppercase">{item.label}</p>
-                <p className="mt-1 text-2xl font-extrabold text-slate-950">{loading ? '...' : item.value}</p>
-              </div>
-            );
-          })}
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {statCards.map((item) => {
+              return (
+                <MetricCard
+                  key={item.label}
+                  label={item.label}
+                  value={loading ? '...' : item.value}
+                  icon={item.icon}
+                  tone={item.label === 'Month Estimate' ? 'amber' : 'teal'}
+                />
+              );
+            })}
+          </div>
 
         <div className="grid grid-cols-1 gap-6">
           <div className="dashboard-panel rounded-2xl p-6">
             <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-bold uppercase text-teal-700">Selected Date</p>
-                <h2 className="text-2xl font-bold text-slate-950">{formatFullDate(selectedDateKey)}</h2>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatFullDate(selectedDateKey)}</h2>
               </div>
               <button onClick={() => navigate('/customer/orders')} className="text-sm font-bold text-teal-700 hover:text-teal-800">Manage orders</button>
             </div>
             {dashboard.selectedDateOrders.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-indigo-700">
                 <CalendarDays className="mx-auto mb-3 w-8 h-8 text-teal-500" />
-                <p className="font-bold text-slate-900">No orders on this date</p>
-                <p className="text-sm text-slate-600">Click a marked date to see scheduled deliveries.</p>
+                <p className="font-bold text-slate-900 dark:text-slate-100">No orders on this date</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">Click a marked date to see scheduled deliveries.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -263,8 +280,8 @@ const CustomerDashboard = () => {
                   <div key={`${order._id}-${scheduleDate}`} className="dashboard-card rounded-xl p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-bold text-slate-950">{order.mealPlan?.name || 'Deleted Plan'}</p>
-                        <p className="text-sm text-slate-600">{order.provider?.name || 'Provider'} - {order.deliverySlot}</p>
+                        <p className="font-bold text-slate-900 dark:text-slate-50">{order.mealPlan?.name || 'Deleted Plan'}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">{order.provider?.name || 'Provider'} - {order.deliverySlot}</p>
                       </div>
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-700">
                         {scheduleStatus}
@@ -283,22 +300,22 @@ const CustomerDashboard = () => {
 
           <div className="dashboard-panel rounded-2xl p-6">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-950">Recent Activity</h2>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">Recent Activity</h2>
               <button onClick={() => navigate('/customer/orders')} className="text-sm font-bold text-teal-700 hover:text-teal-800">View all</button>
             </div>
             {dashboard.recentOrders.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center dark:border-indigo-700">
                 <Heart className="mx-auto mb-3 w-8 h-8 text-rose-400" />
-                <p className="font-bold text-slate-900">No orders yet</p>
-                <p className="text-sm text-slate-600">Find a kitchen and start with a one-time order or routine.</p>
+                <p className="font-bold text-slate-900 dark:text-slate-100">No orders yet</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">Find a kitchen and start with a one-time order or routine.</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {dashboard.recentOrders.map((order) => (
                   <div key={order._id} className="dashboard-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl p-4">
                     <div>
-                      <p className="font-bold text-slate-950">{order.mealPlan?.name || 'Deleted Plan'}</p>
-                      <p className="text-sm text-slate-600">{order.provider?.name || 'Provider'} • {formatDate(order.createdAt)}</p>
+                      <p className="font-bold text-slate-900 dark:text-slate-50">{order.mealPlan?.name || 'Deleted Plan'}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300">{order.provider?.name || 'Provider'} • {formatDate(order.createdAt)}</p>
                     </div>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold uppercase text-slate-700">{order.status}</span>
                   </div>
@@ -307,6 +324,7 @@ const CustomerDashboard = () => {
             )}
           </div>
 
+        </div>
         </div>
       </div>
     </div>

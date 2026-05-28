@@ -9,6 +9,8 @@ import providerRoutes from './routes/providerRoutes.js';
 import mealRoutes from './routes/mealRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import complaintRoutes from './routes/complaintRoutes.js';
 
 // Load env vars
 dotenv.config();
@@ -45,6 +47,8 @@ app.use('/api/providers', providerRoutes);
 app.use('/api/meals', mealRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 // Socket.io setup
 const server = http.createServer(app);

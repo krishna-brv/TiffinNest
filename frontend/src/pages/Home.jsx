@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowRight, CalendarDays, ClipboardList, HeartHandshake, ShieldCheck } from 'lucide-react';
 import useAuthStore from '../store/authStore';
-import { ChefHat, Utensils, ShieldCheck, Heart, ArrowRight } from 'lucide-react';
+import BrandMark from '../components/ui/BrandMark';
+import Button from '../components/ui/Button';
+
+const getDashboardPath = (role) => {
+  if (role === 'admin') return '/admin/dashboard';
+  if (role === 'provider') return '/provider/dashboard';
+  return '/customer/dashboard';
+};
 
 const Home = () => {
   const navigate = useNavigate();
@@ -9,166 +17,96 @@ const Home = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === 'customer') {
-        navigate('/customer/dashboard');
-      } else if (user.role === 'provider') {
-        navigate('/provider/dashboard');
-      }
+      navigate(getDashboardPath(user.role));
     }
   }, [user, loading, navigate]);
 
-  if (loading) return null; // Or a loading spinner
+  if (loading) return null;
+
+  const features = [
+    {
+      title: 'Routine-first ordering',
+      body: 'Customers can schedule daily, weekly, or monthly meals and still pause, skip, or cancel when plans change.',
+      icon: CalendarDays,
+    },
+    {
+      title: 'Provider control room',
+      body: 'Home cooks manage availability, delivery slots, meal plans, incoming orders, and prep sheets from one place.',
+      icon: ClipboardList,
+    },
+    {
+      title: 'Local trust signals',
+      body: 'Ratings, favorites, saved addresses, and account controls keep repeat ordering predictable.',
+      icon: ShieldCheck,
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-transparent overflow-x-hidden">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-4 glass-panel m-4 rounded-2xl border border-white/30">
+    <main className="min-h-screen bg-slate-50">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+        <BrandMark />
         <div className="flex items-center gap-2">
-          <div className="bg-orange-500 p-2 rounded-lg">
-            <Utensils className="text-white w-6 h-6" />
-          </div>
-          <span className="text-2xl font-black text-gray-900 tracking-tighter">TiffinNest</span>
-        </div>
-        <div className="flex gap-4">
-          <button onClick={() => navigate('/login')} className="px-6 py-2 text-gray-800 font-bold hover:text-orange-600 transition">Login</button>
-          <button onClick={() => navigate('/register')} className="px-6 py-2 bg-orange-500 text-white font-bold rounded-xl shadow-lg hover:bg-orange-600 transition transform hover:scale-105">Sign Up</button>
+          <Button variant="ghost" onClick={() => navigate('/login')}>Sign in</Button>
+          <Button onClick={() => navigate('/register')}>Create account</Button>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12">
-          <div className="flex-1 space-y-8 text-center lg:text-left">
-            <div className="inline-block px-4 py-1 rounded-full bg-orange-100 text-orange-600 font-bold text-sm border border-orange-200">
-              Homemade with care
-            </div>
-            <h1 className="text-6xl md:text-7xl font-black text-gray-900 leading-[1.1] tracking-tight">
-              Delicious <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">Home-Cooked</span> Tiffins, Delivered.
-            </h1>
-            <p className="text-xl text-gray-700 max-w-2xl leading-relaxed">
-              Connect with skilled home cooks in your community. Experience authentic, healthy, and affordable meals delivered with routine-friendly planning.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <button 
-                onClick={() => navigate('/register')} 
-                className="group px-8 py-4 bg-orange-500 text-white font-bold text-lg rounded-2xl shadow-xl hover:bg-orange-600 transition transform hover:-translate-y-1 flex items-center justify-center gap-2"
-              >
-                Order Your First Tiffin <ArrowRight className="group-hover:translate-x-1 transition" />
-              </button>
-              <button 
-                onClick={() => navigate('/register')} 
-                className="px-8 py-4 glass-panel font-bold text-lg rounded-2xl hover:bg-white/40 transition transform hover:-translate-y-1"
-              >
-                Become a Food Provider
-              </button>
-            </div>
-            <div className="flex items-center justify-center lg:justify-start gap-8 pt-4">
-              <div className="text-center">
-                <p className="text-3xl font-black text-gray-900">500+</p>
-                <p className="text-sm text-gray-600 font-bold uppercase">Active Chefs</p>
-              </div>
-              <div className="text-center border-l border-gray-300 pl-8">
-                <p className="text-3xl font-black text-gray-900">10k+</p>
-                <p className="text-sm text-gray-600 font-bold uppercase">Happy Eaters</p>
-              </div>
-              <div className="text-center border-l border-gray-300 pl-8">
-                <p className="text-3xl font-black text-gray-900">4.9/5</p>
-                <p className="text-sm text-gray-600 font-bold uppercase">Top Ratings</p>
-              </div>
-            </div>
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-12 pt-6 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-20 lg:pt-12">
+        <div className="flex flex-col justify-center">
+          <p className="text-sm font-bold uppercase text-teal-700">Home kitchens, organized</p>
+          <h1 className="mt-4 max-w-3xl text-5xl font-extrabold leading-tight tracking-normal text-slate-950 sm:text-6xl">
+            Daily tiffin routines without the daily coordination.
+          </h1>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+            TiffinNest connects customers with local home cooks and gives both sides a practical workflow for menus, schedules, prep, and order status.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Button size="lg" onClick={() => navigate('/register')}>
+              Start ordering <ArrowRight className="h-5 w-5" />
+            </Button>
+            <Button size="lg" variant="secondary" onClick={() => navigate('/register')}>
+              Register as provider
+            </Button>
           </div>
-          <div className="flex-1 relative">
-            <div className="absolute -inset-4 bg-gradient-to-r from-orange-500 to-red-500 rounded-[3rem] blur-2xl opacity-20 animate-pulse"></div>
-            <img 
-              src="/home_hero_dabba_1778081716855.png" 
-              alt="Home Cooked Meal" 
-              className="relative w-full h-auto rounded-[3rem] shadow-2xl border-4 border-white/50"
-            />
-            {/* Floating Badges */}
-            <div className="absolute -top-6 -right-6 glass-panel p-4 rounded-2xl shadow-xl animate-bounce">
-              <div className="flex items-center gap-3">
-                <div className="bg-green-500 p-2 rounded-lg">
-                  <ShieldCheck className="text-white w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase">Quality</p>
-                  <p className="text-sm font-black text-gray-900">100% Healthy</p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -bottom-6 -left-6 glass-panel p-4 rounded-2xl shadow-xl">
-              <div className="flex items-center gap-3">
-                <div className="bg-red-500 p-2 rounded-lg">
-                  <Heart className="text-white w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase">Support</p>
-                  <p className="text-sm font-black text-gray-900">Local Kitchens</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <img
+            src="/home_hero_dabba_1778081716855.png"
+            alt="A neatly packed home-cooked tiffin meal"
+            className="h-full min-h-80 w-full rounded-lg object-cover"
+          />
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 px-6 bg-white/30">
-        <div className="max-w-7xl mx-auto text-center space-y-12">
-          <div className="space-y-4">
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight">Why Choose TiffinNest?</h2>
-            <p className="text-lg text-gray-700 max-w-2xl mx-auto font-medium leading-relaxed">
-              We're more than just a food delivery app. We're a bridge between home kitchens and your dining table.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="glass-panel p-10 rounded-[2.5rem] space-y-6 hover:translate-y-[-10px] transition duration-500 border border-white/50">
-              <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-orange-500/30">
-                <ChefHat className="text-white w-8 h-8" />
-              </div>
-              <h3 className="text-2xl font-black text-gray-900">Expert Home Chefs</h3>
-              <p className="text-gray-700 leading-relaxed">
-                Our providers are skilled home cooks who take pride in their family recipes and use high-quality ingredients.
-              </p>
-            </div>
-            <div className="glass-panel p-10 rounded-[2.5rem] space-y-6 hover:translate-y-[-10px] transition duration-500 border border-white/50">
-              <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
-                <Utensils className="text-white w-8 h-8" />
-              </div>
-              <h3 className="text-2xl font-black text-gray-900">Zero Plastic Waste</h3>
-              <p className="text-gray-700 leading-relaxed">
-                We support reusable tiffins and practical delivery routines, reducing plastic waste while keeping food fresh.
-              </p>
-            </div>
-            <div className="glass-panel p-10 rounded-[2.5rem] space-y-6 hover:translate-y-[-10px] transition duration-500 border border-white/50">
-              <div className="w-16 h-16 bg-purple-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-purple-500/30">
-                <Heart className="text-white w-8 h-8" />
-              </div>
-              <h3 className="text-2xl font-black text-gray-900">Community Focused</h3>
-              <p className="text-gray-700 leading-relaxed">
-                By ordering here, you support local households and empower women entrepreneurs in your own neighborhood.
-              </p>
-            </div>
-          </div>
+      <section className="border-y border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 md:grid-cols-3 lg:px-8">
+          {features.map((item) => {
+            const Icon = item.icon;
+            return (
+              <article key={item.title} className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+                <div className="mb-4 inline-flex rounded-lg bg-white p-2 text-teal-700 shadow-sm">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h2 className="text-lg font-extrabold text-slate-950">{item.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p>
+              </article>
+            );
+          })}
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-2">
-            <div className="bg-orange-500 p-2 rounded-lg">
-              <Utensils className="text-white w-4 h-4" />
-            </div>
-            <span className="text-xl font-black text-gray-900 tracking-tighter">TiffinNest</span>
-          </div>
-          <p className="text-gray-600 font-medium">© 2026 TiffinNest. All rights reserved.</p>
-          <div className="flex gap-6">
-            <button type="button" onClick={() => navigate('/terms')} className="text-gray-600 hover:text-orange-600 font-bold transition">Terms</button>
-            <button type="button" onClick={() => navigate('/contact')} className="text-gray-600 hover:text-orange-600 font-bold transition">Contact</button>
-          </div>
+      <footer className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-sm text-slate-600 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+        <div className="flex items-center gap-2 font-bold text-slate-800">
+          <HeartHandshake className="h-4 w-4 text-teal-700" />
+          Built for neighborhood kitchens
+        </div>
+        <div className="flex gap-5">
+          <button type="button" onClick={() => navigate('/terms')} className="font-bold hover:text-slate-950">Terms</button>
+          <button type="button" onClick={() => navigate('/contact')} className="font-bold hover:text-slate-950">Contact</button>
         </div>
       </footer>
-    </div>
+    </main>
   );
 };
 

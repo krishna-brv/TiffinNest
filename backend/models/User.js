@@ -15,12 +15,35 @@ const userSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required() {
+        return this.authProvider === 'local';
+      },
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+    googleId: {
+      type: String,
+      sparse: true,
+      unique: true,
     },
     role: {
       type: String,
       enum: ['customer', 'provider', 'admin'],
       default: 'customer',
+    },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
+    providerApprovalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default() {
+        return this.role === 'provider' ? 'pending' : 'approved';
+      },
     },
     favoriteProviders: [
       {
@@ -47,6 +70,9 @@ const userSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+userSchema.index({ name: 'text', email: 'text' });
+userSchema.index({ role: 1, isBlocked: 1, providerApprovalStatus: 1 });
 
 // Method to compare entered password with hashed password
 userSchema.methods.matchPassword = async function (enteredPassword) {

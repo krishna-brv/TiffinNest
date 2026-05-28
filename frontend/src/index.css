@@ -1,56 +1,109 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
   body {
-    @apply min-h-screen text-gray-900 font-sans antialiased bg-fixed;
-    background:
-      radial-gradient(circle at 8% 12%, rgba(244, 114, 82, 0.18), transparent 24rem),
-      radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.18), transparent 22rem),
-      linear-gradient(135deg, #fffaf2 0%, #f1fbf7 44%, #fff7ed 100%);
+    @apply min-h-screen bg-slate-50 font-sans text-slate-900 antialiased;
+    letter-spacing: 0;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    letter-spacing: 0;
   }
 }
 
 @layer utilities {
-  .glass-panel {
-    @apply bg-white/90 backdrop-blur-md border border-white/70 shadow-xl;
-  }
-  
-  .glass-input {
-    @apply bg-white/80 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:border-transparent transition-all;
+  .app-shell {
+    @apply min-h-screen bg-slate-50 px-4 py-5 font-sans text-slate-900 sm:px-6 sm:py-8 dark:bg-slate-900 dark:text-slate-100;
   }
 
-  .app-shell {
-    @apply min-h-screen bg-transparent p-4 sm:p-8 font-sans;
+  .surface,
+  .glass-panel,
+  .page-panel,
+  .dashboard-panel,
+  .account-panel {
+    @apply border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800;
+  }
+
+  .glass-panel,
+  .page-panel,
+  .dashboard-panel,
+  .account-panel {
+    @apply rounded-xl;
   }
 
   .page-panel {
-    @apply max-w-7xl mx-auto bg-white/90 backdrop-blur-md border border-white/70 shadow-xl p-6 sm:p-8 rounded-2xl;
+    @apply mx-auto max-w-7xl p-5 sm:p-6;
+  }
+
+  .field-control,
+  .glass-input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-950 focus:ring-2 focus:ring-slate-200 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-teal-400 dark:focus:ring-teal-900;
   }
 
   .action-button {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 font-bold shadow-md transition-all hover:-translate-y-0.5;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-slate-300 dark:focus:ring-offset-slate-900;
   }
 
-  .food-card {
-    @apply rounded-2xl border border-white/80 bg-white/85 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl;
+  .food-card,
+  .dashboard-card,
+  .account-action-card {
+    @apply rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-500;
+  }
+
+  .dark :is(.surface, .glass-panel, .page-panel, .dashboard-panel, .account-panel, .food-card, .dashboard-card, .account-action-card, .page-header) :is(.text-slate-950, .text-slate-900, .text-gray-900) {
+    color: #f8fafc !important;
+  }
+
+  .dark :is(.surface, .glass-panel, .page-panel, .dashboard-panel, .account-panel, .food-card, .dashboard-card, .account-action-card, .page-header) :is(.text-slate-800, .text-gray-800) {
+    color: #e2e8f0 !important;
+  }
+
+  .dark :is(.surface, .glass-panel, .page-panel, .dashboard-panel, .account-panel, .food-card, .dashboard-card, .account-action-card, .page-header) :is(.text-slate-700, .text-gray-700, .text-slate-600, .text-gray-600) {
+    color: #cbd5e1 !important;
+  }
+
+  .dark :is(.surface, .glass-panel, .page-panel, .dashboard-panel, .account-panel, .food-card, .dashboard-card, .account-action-card, .page-header) :is(.text-slate-500, .text-gray-500) {
+    color: #94a3b8 !important;
+  }
+
+  .dark :is(.dashboard-panel, .account-panel, .page-panel) :is(.bg-white, .bg-slate-50, .bg-gray-100) {
+    background-color: #0f172a !important;
+  }
+
+  .dark :is(.dashboard-panel, .account-panel, .page-panel) :is(.bg-white\/40, .bg-white\/50, .bg-white\/60) {
+    background-color: rgb(15 23 42 / 0.7) !important;
   }
 
   .slide-color-card {
-    @apply relative overflow-hidden;
+    @apply relative isolate overflow-hidden;
   }
 
   .slide-color-card::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(110deg, transparent 0%, rgba(13, 148, 136, 0.22) 30%, rgba(245, 158, 11, 0.26) 50%, rgba(79, 70, 229, 0.2) 72%, transparent 100%);
-    transform: translateX(-105%);
-    transition: transform 650ms ease;
-    pointer-events: none;
+    z-index: -1;
+    background: linear-gradient(90deg, #2563eb, #38bdf8);
+    transform: translateX(-101%);
+    transition: transform 280ms ease;
   }
 
-  .slide-color-card:hover::before {
-    transform: translateX(105%);
+  .slide-color-card:hover::before,
+  .slide-color-card:focus-visible::before {
+    transform: translateX(0);
   }
 
   .slide-color-card > * {
@@ -58,44 +111,36 @@
     z-index: 1;
   }
 
-  .account-panel {
-    background: linear-gradient(135deg, #ffffff 0%, #ecfeff 42%, #fff7ed 100%);
-    border: 1px solid rgba(15, 23, 42, 0.08);
+  .slide-color-card--dark::before {
+    background: linear-gradient(90deg, #1d4ed8, #0ea5e9);
   }
 
   .account-hero {
-    background: linear-gradient(135deg, #0f172a 0%, #164e63 50%, #0f766e 100%);
-    color: #ffffff;
-  }
-
-  .account-action-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid rgba(15, 23, 42, 0.1);
-  }
-
-  .account-action-card:hover {
-    border-color: rgba(13, 148, 136, 0.38);
+    @apply border border-slate-800 bg-slate-950 text-white shadow-sm;
   }
 
   .dashboard-hero {
-    background: linear-gradient(135deg, #0f172a 0%, #164e63 45%, #0f766e 100%);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    @apply border border-teal-900 text-white shadow-sm;
+    background: linear-gradient(120deg, #111827 0%, #0f766e 48%, #115e59 100%);
+    background-size: 220% 220%;
+    animation: dashboard-color-slide 9s ease-in-out infinite;
   }
 
-  .dashboard-panel {
-    background: linear-gradient(135deg, #ffffff 0%, #ecfeff 46%, #fff7ed 100%);
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+  @keyframes dashboard-color-slide {
+    0% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+
+    100% {
+      background-position: 0% 50%;
+    }
   }
 
-  .dashboard-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid rgba(15, 23, 42, 0.1);
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-  }
-
-  .dashboard-card:hover {
-    border-color: rgba(13, 148, 136, 0.32);
+  .page-header {
+    @apply flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center;
   }
 }
